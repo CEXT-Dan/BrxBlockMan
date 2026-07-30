@@ -1,0 +1,464 @@
+#include "stdafx.h"
+#include "WxBlockPanelMFC.h"
+#include "wx/imaglist.h"
+#include "BlockWorker.h"
+#include "DragNDrop.h"
+#include <wx/msw/regconf.h>
+
+//---------------------------------------------------------------------
+// WxBlockPanel
+IMPLEMENT_DYNAMIC_CLASS(WxBlockPanel, wxPanel)
+
+BEGIN_EVENT_TABLE(WxBlockPanel, wxPanel)
+EVT_CHOICE(XRCID("ID_CHOICE"), WxBlockPanel::OnChoiceSelected)
+EVT_BUTTON(XRCID("ID_ADD_BUTTON"), WxBlockPanel::OnAddButtonClick)
+EVT_LIST_ITEM_SELECTED(XRCID("ID_LISTCTRL"), WxBlockPanel::OnListctrlSelected)
+EVT_LIST_BEGIN_DRAG(XRCID("ID_LISTCTRL"), WxBlockPanel::OnListctrlBeginDrag)
+EVT_DIRCTRL_SELECTIONCHANGED(XRCID("ID_DIRCTRL"), WxBlockPanel::OnDirCtrlSelectionChanged)
+END_EVENT_TABLE()
+
+WxBlockPanel::WxBlockPanel()
+{
+    Init();
+}
+
+WxBlockPanel::WxBlockPanel(wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style)
+{
+    Init();
+    Create(parent, id, pos, size, style);
+    InitDialog();
+}
+
+bool WxBlockPanel::Create(wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style)
+{
+    CAcModuleResourceOverride rsrc;
+    SetExtraStyle(wxWS_EX_VALIDATE_RECURSIVELY);
+    SetParent(parent);
+    CreateControls();
+    if (GetSizer())
+    {
+        GetSizer()->SetSizeHints(this);
+    }
+    Centre();
+    return true;
+}
+
+WxBlockPanel::~WxBlockPanel()
+{
+}
+
+void WxBlockPanel::Init()
+{
+    m_ID_STATIC_PREVIEW = NULL;
+    m_ID_CHOICE = NULL;
+    m_ID_ADD_BUTTON = NULL;
+    m_ID_ROTATION_TEXTCTRL = NULL;
+    m_ID_SCALE_TEXTCTRL = NULL;
+    m_ID_DIRCTRL = NULL;
+    m_ID_LISTCTRL = NULL;
+}
+
+void WxBlockPanel::Uninit()
+{
+    m_selectedDb.reset();
+}
+
+bool WxBlockPanel::initDatabase(const wxString& selectedPath)
+{
+    m_selectedDb.reset(new AcDbDatabase(Adesk::kFalse, Adesk::kTrue));
+    if (auto es = m_selectedDb->readDwgFile((const wchar_t*)selectedPath, _SH_DENYNO); es != Acad::eOk)
+    {
+        acutPrintf(L"\nError %ls - Failed to open drawing", acadErrorStatusText(es));
+        return false;
+    }
+    if (auto es = m_selectedDb->closeInput(true); es != Acad::eOk)
+    {
+        acutPrintf(L"\nError %ls - Failed to close database", acadErrorStatusText(es));
+        return false;
+    }
+    return true;
+}
+
+void WxBlockPanel::CreateControls()
+{
+    CAcModuleResourceOverride rsrc;
+    if (!wxXmlResource::Get()->LoadPanel(this, GetParent(), wxT("ID_BLOCKMAN")))
+        wxLogError(wxT("Missing wxXmlResource::Get()->Load() in OnInit()?"));
+
+    m_ID_STATIC_PREVIEW = XRCCTRL(*this, "ID_STATIC_PREVIEW", wxStaticBitmap);
+    m_ID_CHOICE = XRCCTRL(*this, "ID_CHOICE", wxChoice);
+    m_ID_ADD_BUTTON = XRCCTRL(*this, "ID_ADD_BUTTON", wxButton);
+    m_ID_ROTATION_TEXTCTRL = XRCCTRL(*this, "ID_ROTATION_TEXTCTRL", wxTextCtrl);
+    m_ID_SCALE_TEXTCTRL = XRCCTRL(*this, "ID_SCALE_TEXTCTRL", wxTextCtrl);
+    m_ID_DIRCTRL = XRCCTRL(*this, "ID_DIRCTRL", wxGenericDirCtrl);
+    m_ID_LISTCTRL = XRCCTRL(*this, "ID_LISTCTRL", wxListCtrl);
+
+    if (m_ID_DIRCTRL)
+    {
+        wxTreeCtrl* internalTree = m_ID_DIRCTRL->GetTreeCtrl();
+        if (internalTree)
+            internalTree->Bind(wxEVT_TREE_ITEM_RIGHT_CLICK, &WxBlockPanel::OnDirCtrlRightClick, this);
+    }
+    // ------------------------------------
+
+    m_ID_CHOICE->Bind(wxEVT_RIGHT_DOWN, &WxBlockPanel::OnChoiceRightClick, this);
+    m_ID_LISTCTRL->Bind(wxEVT_LEFT_DCLICK, &WxBlockPanel::OnListCtrlLeftDClick, this);
+    m_ID_STATIC_PREVIEW->Bind(wxEVT_LEFT_DCLICK, &WxBlockPanel::OnPreviewLeftDClick, this);
+    m_ID_CHOICE->Bind(wxEVT_CHOICE, &WxBlockPanel::OnChoiceChanged, this);
+
+    LoadChoiceSetting();
+}
+
+void WxBlockPanel::InitDialog()
+{
+    CAcModuleResourceOverride rsrc;
+    wxRect parentRect = GetParent()->GetRect();
+    SetSize(parentRect);
+    this->Update();
+}
+
+void WxBlockPanel::OnChoiceSelected(wxCommandEvent& event)
+{
+    CAcModuleResourceOverride rsrc;
+    wxString folderPath = event.GetString();
+    if (!folderPath.IsEmpty())
+    {
+        NavigateToFolder(folderPath);
+    }
+    event.Skip();
+}
+
+void WxBlockPanel::OnAddButtonClick(wxCommandEvent& event)
+{
+    CAcModuleResourceOverride rsrc;
+    wxDirDialog dirDlg(this,
+        "Choose a Folder",
+        m_ID_DIRCTRL->GetPath(),
+        wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
+
+    if (dirDlg.ShowModal() == wxID_OK)
+    {
+        wxString result = dirDlg.GetPath();
+        int existingIndex = m_ID_CHOICE->FindString(result);
+        if (existingIndex == wxNOT_FOUND)
+        {
+            int newIndex = m_ID_CHOICE->Append(result);
+            m_ID_CHOICE->SetSelection(newIndex);
+        }
+        else
+        {
+            m_ID_CHOICE->SetSelection(existingIndex);
+        }
+        NavigateToFolder(result);
+        SaveChoiceSetting();
+    }
+}
+
+void WxBlockPanel::OnDirCtrlSelectionChanged(wxTreeEvent& event)
+{
+    struct CachedFileData {
+        wxBitmap modelPreview;
+        BlockInfoArray blockInfo;
+    };
+    static std::unordered_map<wxString, CachedFileData> sessionCache;
+
+    AcAxDocLock lock;
+    CAcModuleResourceOverride rsrc;
+    wxGenericDirCtrl* dirCtrl = wxDynamicCast(event.GetEventObject(), wxGenericDirCtrl);
+
+    if (!dirCtrl) {
+        m_selectedDb.reset();
+        event.Skip();
+        return;
+    }
+    wxString selectedPath = dirCtrl->GetPath();
+    if (selectedPath.IsEmpty() || !selectedPath.EndsWith(".dwg")) {
+        m_selectedDb.reset();
+        event.Skip();
+        return;
+    }
+    if (!initDatabase(selectedPath)) {
+        m_selectedDb.reset();
+        event.Skip();
+        return;
+    }
+
+    bool inCache = sessionCache.contains(selectedPath);
+    if (!inCache)
+    {
+        CachedFileData newData;
+        AcDbObjectId msid = acdbSymUtil()->blockModelSpaceId(m_selectedDb.get());
+        wxImage modelImage = BlockWorker::getBlockImage(msid, 400, 225, 1.0, { 25, 25, 25 });
+
+        if (modelImage.IsOk()) {
+            newData.modelPreview = wxBitmap(modelImage);
+        }
+
+        if (BlockWorker::getBlockInfoFromdDb(m_selectedDb.get(), newData.blockInfo) == eOk) {
+            sessionCache[selectedPath] = std::move(newData);
+        }
+        else {
+            m_selectedDb.reset();
+            event.Skip();
+            return;
+        }
+    }
+
+    const auto& data = sessionCache.at(selectedPath);
+
+    if (data.modelPreview.IsOk()) {
+        m_ID_STATIC_PREVIEW->SetBitmap(data.modelPreview);
+    }
+
+    {// free the old wxImageList
+        m_ID_LISTCTRL->DeleteAllItems();
+        m_ID_LISTCTRL->AssignImageList(nullptr, wxIMAGE_LIST_NORMAL);
+    }
+
+    if (!data.blockInfo.empty()) {
+        auto* imageList = new wxImageList(64, 64, false, static_cast<int>(data.blockInfo.size()));
+        long itemIndex = 0;
+
+        for (const auto& item : data.blockInfo) {
+            int imgIdx = -1;
+            if (item.preview.IsOk()) {
+                imgIdx = imageList->Add(wxBitmap{ item.preview });
+            }
+            m_ID_LISTCTRL->InsertItem(itemIndex, item.name, imgIdx);
+            itemIndex++;
+        }
+        m_ID_LISTCTRL->AssignImageList(imageList, wxIMAGE_LIST_NORMAL);
+    }
+    event.Skip();
+}
+
+void WxBlockPanel::OnListctrlSelected(wxListEvent& event)
+{
+    event.Skip();
+}
+
+void WxBlockPanel::OnListctrlBeginDrag(wxListEvent& event)
+{
+    long itemIndex = event.GetIndex();
+    if (itemIndex != wxNOT_FOUND)
+    {
+        COleDataSource source;
+        COleDropSource dropSource;
+        CBlkFileDropTarget dropTarget;
+
+        if (!acedStartOverrideDropTarget(&dropTarget))
+            acutPrintf(_T("Error in overriding Custom drop target!\n"));
+
+        DROPEFFECT dwEffect = source.DoDragDrop(DROPEFFECT_NONE | DROPEFFECT_MOVE);
+
+        if (!acedEndOverrideDropTarget(&dropTarget))
+            acutPrintf(_T("Error in ending override drop target\n"));
+
+        if (dwEffect)
+        {
+            wxString blockName = m_ID_LISTCTRL->GetItemText(itemIndex, 0);
+            BlockWorker::insertBlockTableRecord(m_selectedDb.get(), blockName, getScaleValue(), getRotationValue());
+        }
+    }
+    event.Skip();
+}
+
+void WxBlockPanel::NavigateToFolder(const wxString& folder)
+{
+    if (!wxDirExists(folder))
+    {
+        acutPrintf(L"\nNavigateToFolder failed: Path does not exist -> %ls", (const wchar_t*)folder);
+        return;
+    }
+    m_ID_DIRCTRL->CollapseTree();
+    m_ID_DIRCTRL->SelectPath(folder);
+    m_ID_DIRCTRL->ExpandPath(folder);
+}
+
+void WxBlockPanel::OnChoiceRightClick(wxMouseEvent& event)
+{
+    if (!m_ID_CHOICE || m_ID_CHOICE->IsEmpty()) return;
+
+    int response = wxMessageBox(
+        L"Are you sure you want to clear all favorite folders?",
+        L"Clear Favorites",
+        wxYES_NO | wxICON_QUESTION,
+        this
+    );
+
+    if (response == wxYES)
+    {
+        m_ID_CHOICE->Clear();
+
+        wxRegConfig config(wxT("Blockman"), wxT("CADExt"));
+
+        config.DeleteEntry(wxT("/Settings/FavoritesCount"));
+        config.DeleteEntry(wxT("/Settings/ActiveFavorite"));
+        config.DeleteGroup(wxT("/Settings"));
+        config.Flush();
+    }
+}
+
+void WxBlockPanel::OnChoiceChanged(wxCommandEvent& event)
+{
+    wxString activeFolder = event.GetString();
+    if (!activeFolder.IsEmpty())
+    {
+        NavigateToFolder(activeFolder);
+    }
+    SaveChoiceSetting();
+}
+
+void WxBlockPanel::OnListCtrlLeftDClick(wxMouseEvent& event)
+{
+    wxPoint pos = event.GetPosition();
+    int flags = 0;
+    long itemIndex = m_ID_LISTCTRL->HitTest(pos, flags);
+    if (itemIndex != wxNOT_FOUND)
+    {
+        wxString blockName = m_ID_LISTCTRL->GetItemText(itemIndex, 0);
+        BlockWorker::insertBlockTableRecord(m_selectedDb.get(), blockName, getScaleValue(), getRotationValue());
+    }
+    event.Skip();
+}
+
+void WxBlockPanel::OnPreviewLeftDClick(wxMouseEvent& event)
+{
+    BlockWorker::insertDwg(m_selectedDb.get(), getScaleValue(), getRotationValue());
+    event.Skip();
+}
+
+void WxBlockPanel::OnDirCtrlRightClick(wxTreeEvent& event)
+{
+    //AcAxDocLock lock;
+    wxString path = m_ID_DIRCTRL->GetPath();
+    if (path.IsEmpty()) return;
+    wxString lowerPath = path.Lower();
+    if (!lowerPath.EndsWith(".dwg"))
+        return;
+    m_selectedDb.reset();
+    if (acDocManagerPtr()->isApplicationContext())
+        acDocManagerPtr()->appContextOpenDocument(path.t_str());
+    else
+        acutPrintf(_T("\n[Error] Failed to acquire main Application Context.\n"));
+}
+
+void WxBlockPanel::SaveChoiceSetting()
+{
+    if (!m_ID_CHOICE) return;
+
+    wxRegConfig config(wxT("Blockman"), wxT("CADExt"));
+    int itemCount = m_ID_CHOICE->GetCount();
+    config.Write(wxT("/Settings/FavoritesCount"), itemCount);
+
+    for (int i = 0; i < itemCount; ++i)
+    {
+        wxString key = wxString::Format(wxT("/Settings/FavoriteFolder_%d"), i);
+        config.Write(key, m_ID_CHOICE->GetString(i));
+    }
+    int selectionIndex = m_ID_CHOICE->GetSelection();
+    if (selectionIndex != wxNOT_FOUND)
+    {
+        config.Write(wxT("/Settings/ActiveFavorite"), m_ID_CHOICE->GetString(selectionIndex));
+    }
+    else
+    {
+        config.Write(wxT("/Settings/ActiveFavorite"), wxEmptyString);
+    }
+
+    config.Flush(); // Commits into HKEY_CURRENT_USER\Software\CADExt\Blockman
+}
+
+void WxBlockPanel::LoadChoiceSetting()
+{
+    if (!m_ID_CHOICE) return;
+
+    m_ID_CHOICE->Clear();
+    wxRegConfig config(wxT("Blockman"), wxT("CADExt"));
+    int itemCount = config.ReadLong(wxT("/Settings/FavoritesCount"), 0);
+
+    for (int i = 0; i < itemCount; ++i)
+    {
+        wxString key = wxString::Format(wxT("/Settings/FavoriteFolder_%d"), i);
+        wxString folderPath = config.Read(key, wxEmptyString);
+
+        if (!folderPath.IsEmpty() && wxDirExists(folderPath))
+        {
+            m_ID_CHOICE->Append(folderPath);
+        }
+    }
+
+    wxString activeFolder = config.Read(wxT("/Settings/ActiveFavorite"), wxEmptyString);
+    if (!activeFolder.IsEmpty())
+    {
+        int index = m_ID_CHOICE->FindString(activeFolder);
+        if (index != wxNOT_FOUND)
+        {
+            m_ID_CHOICE->SetSelection(index);
+            NavigateToFolder(activeFolder);
+        }
+    }
+}
+
+double WxBlockPanel::getScaleValue() const
+{
+    double scale = 1.0;
+    auto str = m_ID_SCALE_TEXTCTRL->GetValue();
+    if (!str.ToDouble(&scale) || std::fabs(scale) < 1e-9)
+    {
+        acutPrintf(L"\nConversion failed or scale is zero: defaulting to 1.0 -> getScaleValue");
+        return 1.0;
+    }
+    return scale;
+}
+
+double WxBlockPanel::getRotationValue() const
+{
+    double deg = 0.0;
+    auto str = m_ID_ROTATION_TEXTCTRL->GetValue();
+    if (!str.ToDouble(&deg))
+    {
+        acutPrintf(L"\nConversion failed: -> getRotationValue");
+        return 0.0;
+    }
+    return deg * (M_PI / 180.0);
+}
+
+BEGIN_MESSAGE_MAP(WxBlockPanelMFC, BcUiPanelMFC)
+    ON_WM_DESTROY()
+END_MESSAGE_MAP()
+
+//---------------------------------------------------------------------
+// WxBlockPanelMFC
+WxBlockPanelMFC::WxBlockPanelMFC()
+    : BcUiPanelMFC(ACRX_T("BockPanel"), ACRX_T("WxBlockPanel"))
+{
+}
+
+BOOL WxBlockPanelMFC::CreateControlBar(LPCREATESTRUCT lpCreateStruct)
+{
+    CAcModuleResourceOverride rsrc;
+    if (!BcUiPanelMFC::CreateControlBar(lpCreateStruct))
+        return FALSE;
+    m_thisWin = new wxPanel();
+    m_thisWin->SetHWND(this->m_hWnd);
+    m_thisWin->AdoptAttributesFromHWND();
+    m_blkPanel = new WxBlockPanel(m_thisWin);
+    return TRUE;
+}
+
+void WxBlockPanelMFC::OnSizeChanged(int cx, int cy)
+{
+    CAcModuleResourceOverride rsrc;
+    BcUiPanelMFC::OnSizeChanged(cx, cy);
+    CRect rcClient;
+    GetClientRect(&rcClient);
+    wxRect wxR(rcClient.left, rcClient.top, rcClient.Width(), rcClient.Height());
+    m_blkPanel->SetSize(wxR);
+}
+
+void WxBlockPanelMFC::OnDestroy()
+{
+    m_blkPanel->Uninit();
+    CWnd::OnDestroy();
+}
