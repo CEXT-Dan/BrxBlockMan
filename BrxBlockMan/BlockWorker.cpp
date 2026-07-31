@@ -144,17 +144,20 @@ wxImage BlockImageRenderer::render(AcDbBlockTableRecord* pBlock, double zoomFact
     if (image.isValid())
     {
         Atil::Size imageSize = image.size();
-        Atil::ImageContext* imgContext = image.createContext(Atil::ImageContext::kRead, imageSize, Atil::Offset(0, 0));
-        Atil::DataModelAttributes::PixelType pixelType = imgContext->getPixelType();
-        if (pixelType == Atil::DataModelAttributes::kRgba)
+        std::unique_ptr<Atil::ImageContext> imgContext(image.createContext(Atil::ImageContext::kRead, imageSize, Atil::Offset(0, 0)));
+        if (imgContext)
         {
-            wximage = wxImage(wxSize(imageSize.width, imageSize.height));
-            for (Atil::Int32 x = 0; x < imageSize.width; ++x)
+            Atil::DataModelAttributes::PixelType pixelType = imgContext->getPixelType();
+            if (pixelType == Atil::DataModelAttributes::kRgba)
             {
-                for (Atil::Int32 y = 0; y < imageSize.height; ++y)
+                wximage = wxImage(wxSize(imageSize.width, imageSize.height));
+                for (Atil::Int32 x = 0; x < imageSize.width; ++x)
                 {
-                    const Atil::RgbColor pix(imgContext->get32(x, y));
-                    wximage.SetRGB(x, y, pix.rgba.red, pix.rgba.green, pix.rgba.blue);
+                    for (Atil::Int32 y = 0; y < imageSize.height; ++y)
+                    {
+                        const Atil::RgbColor pix(imgContext->get32(x, y));
+                        wximage.SetRGB(x, y, pix.rgba.red, pix.rgba.green, pix.rgba.blue);
+                    }
                 }
             }
         }
