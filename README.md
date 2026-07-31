@@ -2,7 +2,7 @@
 Block manager for BricsCAD V25, V26, V27
 - Download and unzip the package from Releases 
 - appload BrxBlockManXX.brx, if you move the module, make sure you bring the .XRC file along
-- type blockman at the prompt, if the panel is not visible, open it from the panels menu 
+- if the panel is not visible, open it from the panels menu 
 - select a drawing from the directory control
 - double click or drag a block from the List control to the current drawing
 - double click the main preview to insert the whole drawing
