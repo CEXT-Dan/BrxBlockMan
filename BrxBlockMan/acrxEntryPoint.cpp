@@ -55,9 +55,7 @@ public:
     {
         AcRx::AppRetCode retCode = AcRxArxApp::On_kUnloadAppMsg(pkt);
         if (m_panel.m_hWnd)
-        {
             m_panel.DestroyWindow();
-        }
         WxBrxApp::uninit();
         return (retCode);
     }
@@ -68,6 +66,8 @@ public:
         if (!On_kLoadDwgMsgCallOnce)
         {
             PRINTVER();
+            if (!m_panel.m_hWnd)
+                m_panel.Create();
             On_kLoadDwgMsgCallOnce = true;
         }
         return retCode;
@@ -111,6 +111,7 @@ public:
         return ver;
     }
 
+#ifdef __NEVER__
     static void ArxTemplate_blockman(void)
     {
         if (!m_panel.m_hWnd)
@@ -118,13 +119,15 @@ public:
             m_panel.Create();
         }
     }
+#endif
 };
 
 //-----------------------------------------------------------------------------
 #pragma warning( disable: 4838 ) //prevents a cast compiler warning, 
 IMPLEMENT_ARX_ENTRYPOINT(ArxTemplate)
 
-//command function
+#ifdef __NEVER__
 ACED_ARXCOMMAND_ENTRY_AUTO(ArxTemplate, ArxTemplate, _blockman, blockman, ACRX_CMD_TRANSPARENT, NULL)
+#endif
 
 #pragma warning( pop )
