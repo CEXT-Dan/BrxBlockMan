@@ -111,23 +111,23 @@ public:
         return ver;
     }
 
-#ifdef __NEVER__
     static void ArxTemplate_blockman(void)
     {
         if (!m_panel.m_hWnd)
         {
             m_panel.Create();
+            acutPrintf(L"\nPanel has been created");
+        }
+        else
+        {
+            m_panel.DestroyWindow();
+            acutPrintf(L"\nPanel has been Destroyed");
         }
     }
-#endif
 };
 
 //-----------------------------------------------------------------------------
 #pragma warning( disable: 4838 ) //prevents a cast compiler warning, 
 IMPLEMENT_ARX_ENTRYPOINT(ArxTemplate)
-
-#ifdef __NEVER__
 ACED_ARXCOMMAND_ENTRY_AUTO(ArxTemplate, ArxTemplate, _blockman, blockman, ACRX_CMD_TRANSPARENT, NULL)
-#endif
-
 #pragma warning( pop )

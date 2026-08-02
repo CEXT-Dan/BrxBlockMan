@@ -384,7 +384,7 @@ Acad::ErrorStatus BlockWorker::insertDwg(AcDbDatabase* blkDb, double scale, doub
     AcGePoint3d inspoint;
     if (!blkDb)
         return Acad::eNoDatabase;
-    AcDbObjectId srcBlockId = acdbSymUtil()->blockModelSpaceId(blkDb);
+    AcDbObjectId srcBlockId = blkDb->currentSpaceId();
     const wchar_t* filename = nullptr;
     if (auto es = blkDb->getFilename(filename); es != eOk)
         return es;

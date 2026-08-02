@@ -15,10 +15,9 @@ BlockJig::BlockJig(const AcDbObjectId& btrid, double scale, double rotation)
     AcGeVector3d xAxis, yAxis, zAxis;
     matUcs.getCoordSystem(ucsOrigin, xAxis, yAxis, zAxis);
 
-    AcGeMatrix3d finalMat = matUcs;
-    finalMat = finalMat * AcGeMatrix3d::rotation(rotation, AcGeVector3d::kZAxis);
-    finalMat = finalMat * AcGeMatrix3d::scaling(scale);
-    m_pRef->transformBy(finalMat);
+    matUcs = matUcs * AcGeMatrix3d::rotation(rotation, AcGeVector3d::kZAxis);
+    matUcs = matUcs * AcGeMatrix3d::scaling(scale);
+    m_pRef->transformBy(matUcs);
 }
 
 AcEdJig::DragStatus BlockJig::sampler(void)
