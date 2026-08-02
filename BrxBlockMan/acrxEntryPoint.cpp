@@ -118,6 +118,10 @@ public:
             PRINTVER();
             acutPrintf(L"\nPanel has been created: ");
         }
+        else
+        {
+            acutPrintf(L"\nPanel was not created: ");
+        }
     }
 };
 
