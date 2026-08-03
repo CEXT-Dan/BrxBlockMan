@@ -69,13 +69,13 @@ public:
     double getRotationValue() const;
 
     // members
-    wxStaticBitmap* m_ID_STATIC_PREVIEW;
-    wxChoice* m_ID_CHOICE;
-    wxButton* m_ID_ADD_BUTTON;
-    wxTextCtrl* m_ID_ROTATION_TEXTCTRL;
-    wxTextCtrl* m_ID_SCALE_TEXTCTRL;
-    wxGenericDirCtrl* m_ID_DIRCTRL;
-    wxListCtrl* m_ID_LISTCTRL;
+    wxStaticBitmap* m_staticPreviewCtrl;
+    wxChoice* m_choiceCtrl;
+    wxButton* m_addButtonCtrl;
+    wxTextCtrl* m_rotationTextCtrl;
+    wxTextCtrl* m_scaleTextCtrl;
+    wxGenericDirCtrl* m_dirCtrl;
+    wxListCtrl* m_listCtrl;
     std::unique_ptr<AcDbDatabase> m_selectedDb;
 };
 

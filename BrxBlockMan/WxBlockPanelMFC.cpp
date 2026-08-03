@@ -49,13 +49,13 @@ WxBlockPanel::~WxBlockPanel()
 
 void WxBlockPanel::Init()
 {
-    m_ID_STATIC_PREVIEW = NULL;
-    m_ID_CHOICE = NULL;
-    m_ID_ADD_BUTTON = NULL;
-    m_ID_ROTATION_TEXTCTRL = NULL;
-    m_ID_SCALE_TEXTCTRL = NULL;
-    m_ID_DIRCTRL = NULL;
-    m_ID_LISTCTRL = NULL;
+    m_staticPreviewCtrl = NULL;
+    m_choiceCtrl = NULL;
+    m_addButtonCtrl = NULL;
+    m_rotationTextCtrl = NULL;
+    m_scaleTextCtrl = NULL;
+    m_dirCtrl = NULL;
+    m_listCtrl = NULL;
 }
 
 void WxBlockPanel::Uninit()
@@ -85,26 +85,26 @@ void WxBlockPanel::CreateControls()
     if (!wxXmlResource::Get()->LoadPanel(this, GetParent(), wxT("ID_BLOCKMAN")))
         wxLogError(wxT("Missing wxXmlResource::Get()->Load() in OnInit()?"));
 
-    m_ID_STATIC_PREVIEW = XRCCTRL(*this, "ID_STATIC_PREVIEW", wxStaticBitmap);
-    m_ID_CHOICE = XRCCTRL(*this, "ID_CHOICE", wxChoice);
-    m_ID_ADD_BUTTON = XRCCTRL(*this, "ID_ADD_BUTTON", wxButton);
-    m_ID_ROTATION_TEXTCTRL = XRCCTRL(*this, "ID_ROTATION_TEXTCTRL", wxTextCtrl);
-    m_ID_SCALE_TEXTCTRL = XRCCTRL(*this, "ID_SCALE_TEXTCTRL", wxTextCtrl);
-    m_ID_DIRCTRL = XRCCTRL(*this, "ID_DIRCTRL", wxGenericDirCtrl);
-    m_ID_LISTCTRL = XRCCTRL(*this, "ID_LISTCTRL", wxListCtrl);
+    m_staticPreviewCtrl = XRCCTRL(*this, "ID_STATIC_PREVIEW", wxStaticBitmap);
+    m_choiceCtrl = XRCCTRL(*this, "ID_CHOICE", wxChoice);
+    m_addButtonCtrl = XRCCTRL(*this, "ID_ADD_BUTTON", wxButton);
+    m_rotationTextCtrl = XRCCTRL(*this, "ID_ROTATION_TEXTCTRL", wxTextCtrl);
+    m_scaleTextCtrl = XRCCTRL(*this, "ID_SCALE_TEXTCTRL", wxTextCtrl);
+    m_dirCtrl = XRCCTRL(*this, "ID_DIRCTRL", wxGenericDirCtrl);
+    m_listCtrl = XRCCTRL(*this, "ID_LISTCTRL", wxListCtrl);
 
 
     // Bind
-    if (m_ID_DIRCTRL)
+    if (m_dirCtrl)
     {
-        wxTreeCtrl* internalTree = m_ID_DIRCTRL->GetTreeCtrl();
+        wxTreeCtrl* internalTree = m_dirCtrl->GetTreeCtrl();
         if (internalTree)
             internalTree->Bind(wxEVT_TREE_ITEM_RIGHT_CLICK, &WxBlockPanel::OnDirCtrlRightClick, this);
     }
-    m_ID_CHOICE->Bind(wxEVT_RIGHT_DOWN, &WxBlockPanel::OnChoiceRightClick, this);
-    m_ID_LISTCTRL->Bind(wxEVT_LEFT_DCLICK, &WxBlockPanel::OnListCtrlLeftDClick, this);
-    m_ID_STATIC_PREVIEW->Bind(wxEVT_LEFT_DCLICK, &WxBlockPanel::OnPreviewLeftDClick, this);
-    m_ID_CHOICE->Bind(wxEVT_CHOICE, &WxBlockPanel::OnChoiceChanged, this);
+    m_choiceCtrl->Bind(wxEVT_RIGHT_DOWN, &WxBlockPanel::OnChoiceRightClick, this);
+    m_listCtrl->Bind(wxEVT_LEFT_DCLICK, &WxBlockPanel::OnListCtrlLeftDClick, this);
+    m_staticPreviewCtrl->Bind(wxEVT_LEFT_DCLICK, &WxBlockPanel::OnPreviewLeftDClick, this);
+    m_choiceCtrl->Bind(wxEVT_CHOICE, &WxBlockPanel::OnChoiceChanged, this);
 
     LoadChoiceSetting();
 }
@@ -133,21 +133,21 @@ void WxBlockPanel::OnAddButtonClick(wxCommandEvent& event)
     CAcModuleResourceOverride rsrc;
     wxDirDialog dirDlg(this,
         "Choose a Folder",
-        m_ID_DIRCTRL->GetPath(),
+        m_dirCtrl->GetPath(),
         wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
 
     if (dirDlg.ShowModal() == wxID_OK)
     {
         wxString result = dirDlg.GetPath();
        
-        if (int existingIndex = m_ID_CHOICE->FindString(result); existingIndex == wxNOT_FOUND)
+        if (int existingIndex = m_choiceCtrl->FindString(result); existingIndex == wxNOT_FOUND)
         {
-            int newIndex = m_ID_CHOICE->Append(result);
-            m_ID_CHOICE->SetSelection(newIndex);
+            int newIndex = m_choiceCtrl->Append(result);
+            m_choiceCtrl->SetSelection(newIndex);
         }
         else
         {
-            m_ID_CHOICE->SetSelection(existingIndex);
+            m_choiceCtrl->SetSelection(existingIndex);
         }
         NavigateToFolder(result);
         SaveChoiceSetting();
@@ -213,12 +213,12 @@ void WxBlockPanel::OnDirCtrlSelectionChanged(wxTreeEvent& event)
     const auto& data = sessionCache.at(selectedPath);
 
     if (data.modelPreview.IsOk()) {
-        m_ID_STATIC_PREVIEW->SetBitmap(data.modelPreview);
+        m_staticPreviewCtrl->SetBitmap(data.modelPreview);
     }
 
     {// free the old wxImageList
-        m_ID_LISTCTRL->DeleteAllItems();
-        m_ID_LISTCTRL->AssignImageList(nullptr, wxIMAGE_LIST_NORMAL);
+        m_listCtrl->DeleteAllItems();
+        m_listCtrl->AssignImageList(nullptr, wxIMAGE_LIST_NORMAL);
     }
 
     if (!data.blockInfo.empty()) {
@@ -230,10 +230,10 @@ void WxBlockPanel::OnDirCtrlSelectionChanged(wxTreeEvent& event)
             if (item.preview.IsOk()) {
                 imgIdx = imageList->Add(wxBitmap{ item.preview });
             }
-            m_ID_LISTCTRL->InsertItem(itemIndex, item.name, imgIdx);
+            m_listCtrl->InsertItem(itemIndex, item.name, imgIdx);
             itemIndex++;
         }
-        m_ID_LISTCTRL->AssignImageList(imageList, wxIMAGE_LIST_NORMAL);
+        m_listCtrl->AssignImageList(imageList, wxIMAGE_LIST_NORMAL);
     }
     event.Skip();
 }
@@ -250,7 +250,6 @@ void WxBlockPanel::OnListctrlBeginDrag(wxListEvent& event)
     if (itemIndex != wxNOT_FOUND)
     {
         COleDataSource source;
-        COleDropSource dropSource;
         CBlkFileDropTarget dropTarget;
 
         if (!acedStartOverrideDropTarget(&dropTarget))
@@ -263,7 +262,7 @@ void WxBlockPanel::OnListctrlBeginDrag(wxListEvent& event)
 
         if (dwEffect)
         {
-            wxString blockName = m_ID_LISTCTRL->GetItemText(itemIndex, 0);
+            wxString blockName = m_listCtrl->GetItemText(itemIndex, 0);
             if (BlockWorker::insertBlockTableRecord(m_selectedDb.get(), blockName, getScaleValue(), getRotationValue()) == eOk)
                 acutPrintf(_T("\n"));
             else
@@ -281,15 +280,15 @@ void WxBlockPanel::NavigateToFolder(const wxString& folder)
         acutPrintf(L"\nNavigateToFolder failed: Path does not exist -> %ls", (const wchar_t*)folder);
         return;
     }
-    m_ID_DIRCTRL->CollapseTree();
-    m_ID_DIRCTRL->SelectPath(folder);
-    m_ID_DIRCTRL->ExpandPath(folder);
+    m_dirCtrl->CollapseTree();
+    m_dirCtrl->SelectPath(folder);
+    m_dirCtrl->ExpandPath(folder);
 }
 
 void WxBlockPanel::OnChoiceRightClick(wxMouseEvent& event)
 {
     CAcModuleResourceOverride rsrc;
-    if (!m_ID_CHOICE || m_ID_CHOICE->IsEmpty()) return;
+    if (!m_choiceCtrl || m_choiceCtrl->IsEmpty()) return;
 
     int response = wxMessageBox(
         L"Are you sure you want to clear all favorite folders?",
@@ -300,7 +299,7 @@ void WxBlockPanel::OnChoiceRightClick(wxMouseEvent& event)
 
     if (response == wxYES)
     {
-        m_ID_CHOICE->Clear();
+        m_choiceCtrl->Clear();
 
         wxRegConfig config(wxT("Blockman"), wxT("CADExt"));
 
@@ -326,10 +325,10 @@ void WxBlockPanel::OnListCtrlLeftDClick(wxMouseEvent& event)
     CAcModuleResourceOverride rsrc;
     wxPoint pos = event.GetPosition();
     int flags = 0;
-    long itemIndex = m_ID_LISTCTRL->HitTest(pos, flags);
+    long itemIndex = m_listCtrl->HitTest(pos, flags);
     if (itemIndex != wxNOT_FOUND)
     {
-        wxString blockName = m_ID_LISTCTRL->GetItemText(itemIndex, 0);
+        wxString blockName = m_listCtrl->GetItemText(itemIndex, 0);
         if(BlockWorker::insertBlockTableRecord(m_selectedDb.get(), blockName, getScaleValue(), getRotationValue()) == eOk)
             acutPrintf(_T("\n"));
         else
@@ -351,7 +350,7 @@ void WxBlockPanel::OnPreviewLeftDClick(wxMouseEvent& event)
 void WxBlockPanel::OnDirCtrlRightClick(wxTreeEvent& event)
 {
     CAcModuleResourceOverride rsrc;
-    wxString path = m_ID_DIRCTRL->GetPath();
+    wxString path = m_dirCtrl->GetPath();
     if (path.IsEmpty()) return;
     wxString lowerPath = path.Lower();
     if (!lowerPath.EndsWith(".dwg"))
@@ -366,21 +365,21 @@ void WxBlockPanel::OnDirCtrlRightClick(wxTreeEvent& event)
 void WxBlockPanel::SaveChoiceSetting()
 {
     CAcModuleResourceOverride rsrc;
-    if (!m_ID_CHOICE) 
+    if (!m_choiceCtrl) 
         return;
 
     wxRegConfig config(wxT("Blockman"), wxT("CADExt"));
-    int itemCount = m_ID_CHOICE->GetCount();
+    int itemCount = m_choiceCtrl->GetCount();
     config.Write(wxT("/Settings/FavoritesCount"), itemCount);
 
     for (int i = 0; i < itemCount; ++i)
     {
         wxString key = wxString::Format(wxT("/Settings/FavoriteFolder_%d"), i);
-        config.Write(key, m_ID_CHOICE->GetString(i));
+        config.Write(key, m_choiceCtrl->GetString(i));
     }
-    if (int selectionIndex = m_ID_CHOICE->GetSelection(); selectionIndex != wxNOT_FOUND)
+    if (int selectionIndex = m_choiceCtrl->GetSelection(); selectionIndex != wxNOT_FOUND)
     {
-        config.Write(wxT("/Settings/ActiveFavorite"), m_ID_CHOICE->GetString(selectionIndex));
+        config.Write(wxT("/Settings/ActiveFavorite"), m_choiceCtrl->GetString(selectionIndex));
     }
     else
     {
@@ -393,10 +392,10 @@ void WxBlockPanel::SaveChoiceSetting()
 void WxBlockPanel::LoadChoiceSetting()
 {
     CAcModuleResourceOverride rsrc;
-    if (!m_ID_CHOICE) 
+    if (!m_choiceCtrl) 
         return;
 
-    m_ID_CHOICE->Clear();
+    m_choiceCtrl->Clear();
     wxRegConfig config(wxT("Blockman"), wxT("CADExt"));
     int itemCount = config.ReadLong(wxT("/Settings/FavoritesCount"), 0);
 
@@ -407,16 +406,16 @@ void WxBlockPanel::LoadChoiceSetting()
 
         if (!folderPath.IsEmpty() && wxDirExists(folderPath))
         {
-            m_ID_CHOICE->Append(folderPath);
+            m_choiceCtrl->Append(folderPath);
         }
     }
 
     if (wxString activeFolder = config.Read(wxT("/Settings/ActiveFavorite"), wxEmptyString); !activeFolder.IsEmpty())
     {
-        int index = m_ID_CHOICE->FindString(activeFolder);
+        int index = m_choiceCtrl->FindString(activeFolder);
         if (index != wxNOT_FOUND)
         {
-            m_ID_CHOICE->SetSelection(index);
+            m_choiceCtrl->SetSelection(index);
             NavigateToFolder(activeFolder);
         }
     }
@@ -426,7 +425,7 @@ double WxBlockPanel::getScaleValue() const
 {
     CAcModuleResourceOverride rsrc;
     double scale = 1.0;
-    auto str = m_ID_SCALE_TEXTCTRL->GetValue();
+    auto str = m_scaleTextCtrl->GetValue();
     if (!str.ToDouble(&scale) || std::fabs(scale) < 1e-9)
     {
         acutPrintf(L"\nConversion failed or scale is zero: defaulting to 1.0 -> getScaleValue");
@@ -439,7 +438,7 @@ double WxBlockPanel::getRotationValue() const
 {
     CAcModuleResourceOverride rsrc;
     double deg = 0.0;
-    auto str = m_ID_ROTATION_TEXTCTRL->GetValue();
+    auto str = m_rotationTextCtrl->GetValue();
     if (!str.ToDouble(&deg))
     {
         acutPrintf(L"\nConversion failed: -> getRotationValue");
