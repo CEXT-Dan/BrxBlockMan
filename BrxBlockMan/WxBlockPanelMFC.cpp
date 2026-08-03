@@ -369,6 +369,7 @@ void WxBlockPanel::SaveChoiceSetting()
         return;
 
     wxRegConfig config(wxT("Blockman"), wxT("CADExt"));
+
     int itemCount = m_choiceCtrl->GetCount();
     config.Write(wxT("/Settings/FavoritesCount"), itemCount);
 

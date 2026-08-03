@@ -193,10 +193,10 @@ Acad::ErrorStatus BlockWorker::getBlockImages(BlockInfoArray& info, int width, i
     return eOk;
 }
 
-Acad::ErrorStatus BlockWorker::getBlockInfoFromdDb(AcDbDatabase* blkDb, BlockInfoArray& info)
+Acad::ErrorStatus BlockWorker::getBlockInfoFromdDb(AcDbDatabase* srcDb, BlockInfoArray& info)
 {
     AcAxDocLock lock;
-    AcDbBlockTablePointer pBlockTablePointer(blkDb->blockTableId(), AcDb::kForRead);
+    AcDbBlockTablePointer pBlockTablePointer(srcDb->blockTableId(), AcDb::kForRead);
     if (auto es = pBlockTablePointer.openStatus(); es != Acad::eOk)
     {
         acutPrintf(L"\nError %ls - Failed to open blockTable", acadErrorStatusText(es));
@@ -319,7 +319,7 @@ static HRESULT insertBlockViaActiveX(
     return hr;
 }
 
-Acad::ErrorStatus BlockWorker::insertBlockTableRecord(AcDbDatabase* sourceDb, const wxString& blockName, double scale, double rotation)
+Acad::ErrorStatus BlockWorker::insertBlockTableRecord(AcDbDatabase* srcDb, const wxString& blockName, double scale, double rotation)
 {
     AcAxDocLock lock;
     AcGePoint3d inspoint;
@@ -337,7 +337,7 @@ Acad::ErrorStatus BlockWorker::insertBlockTableRecord(AcDbDatabase* sourceDb, co
         pDestBlockTable->close();
         if (bBlockExists)
         {
-            if (moveEnt(srcBlockId, inspoint, scale, rotation) == eOk)
+            if (xformBlockJig(srcBlockId, inspoint, scale, rotation) == eOk)
             {
                 HRESULT hr = insertBlockViaActiveX(blockName.c_str(), inspoint, scale, rotation);
                 if (SUCCEEDED(hr))
@@ -348,20 +348,20 @@ Acad::ErrorStatus BlockWorker::insertBlockTableRecord(AcDbDatabase* sourceDb, co
     }
 
     // else wblock
-    if (!sourceDb)
+    if (!srcDb)
     {
         acutPrintf(_T("\nDrawing was closed: "));
         return Acad::eNoDatabase;
     }
     AcDbBlockTable* pSrcBlockTable;
-    if (sourceDb->getBlockTable(pSrcBlockTable, AcDb::kForRead) != Acad::eOk)
+    if (srcDb->getBlockTable(pSrcBlockTable, AcDb::kForRead) != Acad::eOk)
         return Acad::eInvalidInput;
     Acad::ErrorStatus es = pSrcBlockTable->getAt(blockName.c_str(), srcBlockId);
     pSrcBlockTable->close();
     if (es != Acad::eOk)
         return es;
     AcDbDatabase* pTmpDb = nullptr;
-    es = sourceDb->wblock(pTmpDb, srcBlockId);
+    es = srcDb->wblock(pTmpDb, srcBlockId);
     if (es != Acad::eOk)
         return es;
     AcDbObjectId blkId;
@@ -369,37 +369,36 @@ Acad::ErrorStatus BlockWorker::insertBlockTableRecord(AcDbDatabase* sourceDb, co
     delete pTmpDb;
     if (es != Acad::eOk)
         return es;
-    if (moveEnt(srcBlockId, inspoint, scale, rotation) == eOk)
+    if (xformBlockJig(srcBlockId, inspoint, scale, rotation) == eOk)
     {
         HRESULT hr = insertBlockViaActiveX(blockName.c_str(), inspoint, scale, rotation);
-        if (SUCCEEDED(hr))
-            return Acad::eOk;
-        return Acad::eInvalidInput;
+        if (!SUCCEEDED(hr))
+            return Acad::eInvalidInput;
     }
     return Acad::eOk;
 }
 
-Acad::ErrorStatus BlockWorker::insertDwg(AcDbDatabase* blkDb, double scale, double rotation)
+Acad::ErrorStatus BlockWorker::insertDwg(AcDbDatabase* srcDb, double scale, double rotation)
 {
+    if (!srcDb)
+        return Acad::eNoDatabase;
+
+    const wchar_t* filename = nullptr;
+    if (auto es = srcDb->getFilename(filename); es != eOk)
+        return es;
+
     AcAxDocLock lock;
     AcGePoint3d inspoint;
-    if (!blkDb)
-        return Acad::eNoDatabase;
-    AcDbObjectId srcBlockId = blkDb->currentSpaceId();
-    const wchar_t* filename = nullptr;
-    if (auto es = blkDb->getFilename(filename); es != eOk)
-        return es;
-    if (moveEnt(srcBlockId, inspoint, scale, rotation) == eOk)
+    if (xformBlockJig(srcDb->currentSpaceId(), inspoint, scale, rotation) == eOk)
     {
         HRESULT hr = insertBlockViaActiveX(filename, inspoint, scale, rotation);
-        if (SUCCEEDED(hr));
-            return Acad::eOk;
-        return Acad::eInvalidInput;
+        if (!SUCCEEDED(hr));
+            return Acad::eInvalidInput;
     }
     return Acad::eOk;
 }
 
-Acad::ErrorStatus BlockWorker::moveEnt(const AcDbObjectId& id, AcGePoint3d& point, double scale, double rotation)
+Acad::ErrorStatus BlockWorker::xformBlockJig(const AcDbObjectId& id, AcGePoint3d& point, double scale, double rotation)
 {
     AcAxDocLock lock;
     BlockJig jig(id, scale, rotation);
