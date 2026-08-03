@@ -257,7 +257,10 @@ void WxBlockPanel::OnListctrlBeginDrag(wxListEvent& event)
         if (dwEffect)
         {
             wxString blockName = m_ID_LISTCTRL->GetItemText(itemIndex, 0);
-            BlockWorker::insertBlockTableRecord(m_selectedDb.get(), blockName, getScaleValue(), getRotationValue());
+            if (BlockWorker::insertBlockTableRecord(m_selectedDb.get(), blockName, getScaleValue(), getRotationValue()) == eOk)
+                acutPrintf(_T("\n"));
+            else
+                acutPrintf(_T("\nOops, Something went wrong"));
         }
     }
     event.Skip();
@@ -317,14 +320,20 @@ void WxBlockPanel::OnListCtrlLeftDClick(wxMouseEvent& event)
     if (itemIndex != wxNOT_FOUND)
     {
         wxString blockName = m_ID_LISTCTRL->GetItemText(itemIndex, 0);
-        BlockWorker::insertBlockTableRecord(m_selectedDb.get(), blockName, getScaleValue(), getRotationValue());
+        if(BlockWorker::insertBlockTableRecord(m_selectedDb.get(), blockName, getScaleValue(), getRotationValue()) == eOk)
+            acutPrintf(_T("\n"));
+        else
+            acutPrintf(_T("\nOops, Something went wrong"));
     }
     event.Skip();
 }
 
 void WxBlockPanel::OnPreviewLeftDClick(wxMouseEvent& event)
 {
-    BlockWorker::insertDwg(m_selectedDb.get(), getScaleValue(), getRotationValue());
+    if (BlockWorker::insertDwg(m_selectedDb.get(), getScaleValue(), getRotationValue()) == eOk)
+        acutPrintf(_T("\n"));
+    else
+        acutPrintf(_T("\nOops, Something went wrong"));
     event.Skip();
 }
 

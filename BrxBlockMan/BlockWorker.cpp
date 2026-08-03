@@ -381,6 +381,7 @@ Acad::ErrorStatus BlockWorker::insertBlockTableRecord(AcDbDatabase* sourceDb, co
 
 Acad::ErrorStatus BlockWorker::insertDwg(AcDbDatabase* blkDb, double scale, double rotation)
 {
+    AcAxDocLock lock;
     AcGePoint3d inspoint;
     if (!blkDb)
         return Acad::eNoDatabase;
@@ -391,7 +392,7 @@ Acad::ErrorStatus BlockWorker::insertDwg(AcDbDatabase* blkDb, double scale, doub
     if (moveEnt(srcBlockId, inspoint, scale, rotation) == eOk)
     {
         HRESULT hr = insertBlockViaActiveX(filename, inspoint, scale, rotation);
-        if (SUCCEEDED(hr))
+        if (SUCCEEDED(hr));
             return Acad::eOk;
         return Acad::eInvalidInput;
     }
