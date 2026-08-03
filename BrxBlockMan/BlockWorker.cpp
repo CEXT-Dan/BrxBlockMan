@@ -213,7 +213,10 @@ Acad::ErrorStatus BlockWorker::getBlockInfoFromdDb(AcDbDatabase* srcDb, BlockInf
                 AcDbBlockTableRecordPointer pBtr(btrId, AcDb::kForRead);
                 if (pBtr.openStatus() == Acad::eOk)
                 {
-                    if (pBtr->isAnonymous() || pBtr->isLayout() || pBtr->isFromExternalReference() || pBtr->isFromOverlayReference())
+                    if (pBtr->isAnonymous() ||
+                        pBtr->isLayout() ||
+                        pBtr->isFromExternalReference() ||
+                        pBtr->isFromOverlayReference())
                     {
                         continue;
                     }
@@ -230,9 +233,12 @@ Acad::ErrorStatus BlockWorker::getBlockInfoFromdDb(AcDbDatabase* srcDb, BlockInf
                 }
             }
         }
-        getBlockImages(info, 64, 64, 0.95, { 25, 25, 25 });
+        return getBlockImages(info, 64, 64, 0.95, { 25, 25, 25 });
     }
-    return eOk;
+    else
+    {
+        return res;
+    }
 }
 
 //Ax will handle attributes and fields, we don't have to : )
@@ -245,7 +251,7 @@ static HRESULT insertBlockViaActiveX(
     AcAxDocLock lock;
     HRESULT hr = S_OK;
 
-    if (acedGetAcadWinApp() == nullptr) 
+    if (acedGetAcadWinApp() == nullptr)
         return E_FAIL;
 
     CComPtr<IDispatch> pAcadApp = acedGetAcadWinApp()->GetIDispatch(FALSE);
@@ -256,7 +262,7 @@ static HRESULT insertBlockViaActiveX(
     static DISPID dispidPaperSpace = DISPID_UNKNOWN;
     static DISPID dispidInsertBlock = DISPID_UNKNOWN;
 
-    if (dispidDoc == DISPID_UNKNOWN) 
+    if (dispidDoc == DISPID_UNKNOWN)
     {
         OLECHAR* szActiveDoc = const_cast<OLECHAR*>(L"ActiveDocument");
         hr = pAcadApp->GetIDsOfNames(IID_NULL, &szActiveDoc, 1, LOCALE_USER_DEFAULT, &dispidDoc);
@@ -275,7 +281,7 @@ static HRESULT insertBlockViaActiveX(
     bool bTilemode = pDb->tilemode();
     DISPID* pTargetSpaceId = bTilemode ? &dispidModelSpace : &dispidPaperSpace;
 
-    if (*pTargetSpaceId == DISPID_UNKNOWN) 
+    if (*pTargetSpaceId == DISPID_UNKNOWN)
     {
         OLECHAR* szSpaceName = const_cast<OLECHAR*>(bTilemode ? L"ModelSpace" : L"PaperSpace");
         hr = pDoc->GetIDsOfNames(IID_NULL, &szSpaceName, 1, LOCALE_USER_DEFAULT, pTargetSpaceId);
@@ -287,7 +293,7 @@ static HRESULT insertBlockViaActiveX(
     if (FAILED(hr) || varSpace.vt != VT_DISPATCH) return hr;
     CComPtr<IDispatch> pSpace = varSpace.pdispVal;
 
-    if (dispidInsertBlock == DISPID_UNKNOWN) 
+    if (dispidInsertBlock == DISPID_UNKNOWN)
     {
         OLECHAR* szInsertBlock = const_cast<OLECHAR*>(L"InsertBlock");
         hr = pSpace->GetIDsOfNames(IID_NULL, &szInsertBlock, 1, LOCALE_USER_DEFAULT, &dispidInsertBlock);
@@ -313,9 +319,7 @@ static HRESULT insertBlockViaActiveX(
 
     hr = pSpace->Invoke(dispidInsertBlock, IID_NULL, LOCALE_USER_DEFAULT, DISPATCH_METHOD, &dpInsert, &varResultBlockRef, NULL, NULL);
     if (FAILED(hr) || varResultBlockRef.vt != VT_DISPATCH || !varResultBlockRef.pdispVal)
-    {
-        return hr;
-    }
+        return E_FAIL;
     return hr;
 }
 
@@ -396,7 +400,7 @@ Acad::ErrorStatus BlockWorker::insertDwg(AcDbDatabase* srcDb, double scale, doub
     {
         HRESULT hr = insertBlockViaActiveX(filename, inspoint, scale, rotation);
         if (!SUCCEEDED(hr));
-            return Acad::eInvalidInput;
+        return Acad::eInvalidInput;
     }
     return Acad::eOk;
 }
