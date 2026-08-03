@@ -326,6 +326,7 @@ Acad::ErrorStatus BlockWorker::insertBlockTableRecord(AcDbDatabase* srcDb, const
     AcDbObjectId srcBlockId;
     AcDbDatabase* pDestDb = acdbCurDwg();
     AcDbBlockTable* pDestBlockTable = nullptr;
+
     if (!pDestDb)
         return Acad::eNoDatabase;
 
@@ -356,19 +357,21 @@ Acad::ErrorStatus BlockWorker::insertBlockTableRecord(AcDbDatabase* srcDb, const
     AcDbBlockTable* pSrcBlockTable;
     if (srcDb->getBlockTable(pSrcBlockTable, AcDb::kForRead) != Acad::eOk)
         return Acad::eInvalidInput;
+
     Acad::ErrorStatus es = pSrcBlockTable->getAt(blockName.c_str(), srcBlockId);
+    if (es != Acad::eOk)
+        return es;
     pSrcBlockTable->close();
-    if (es != Acad::eOk)
-        return es;
+
     AcDbDatabase* pTmpDb = nullptr;
-    es = srcDb->wblock(pTmpDb, srcBlockId);
-    if (es != Acad::eOk)
+    if (auto es = srcDb->wblock(pTmpDb, srcBlockId); es != Acad::eOk)
         return es;
+    std::unique_ptr<AcDbDatabase> pSafeTmpDb(pTmpDb);
+
     AcDbObjectId blkId;
-    es = pDestDb->insert(blkId, blockName.c_str(), pTmpDb, Adesk::kTrue);
-    delete pTmpDb;
-    if (es != Acad::eOk)
+    if (auto es = pDestDb->insert(blkId, blockName.c_str(), pTmpDb, Adesk::kTrue); es != Acad::eOk)
         return es;
+
     if (xformBlockJig(srcBlockId, inspoint, scale, rotation) == eOk)
     {
         HRESULT hr = insertBlockViaActiveX(blockName.c_str(), inspoint, scale, rotation);
