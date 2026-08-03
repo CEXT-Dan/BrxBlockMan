@@ -75,7 +75,7 @@ void AcGsViewDeleter::operator()(AcGsView* ptr)
 {
     if (ptr == nullptr)
         return;
-    ptr->eraseAll();
+    ptr->eraseAll();  
 }
 
 void AcGsModelDeleter::operator()(AcGsModel* ptr)
@@ -99,20 +99,26 @@ BlockImageRenderer::BlockImageRenderer(int width, int height, const std::array<i
     m_pGraphicsKernel = AcGsManager::acquireGraphicsKernel(descriptor);
     if (m_pGraphicsKernel == nullptr)
         return;
+
     m_pOffDevice.reset(gsManager->createAutoCADOffScreenDevice(*m_pGraphicsKernel));
     if (m_pOffDevice == nullptr)
         return;
+
     m_pView.reset(gsManager->createView(m_pOffDevice.get()));
     if (m_pView == nullptr)
         return;
+
     m_pModel.reset(gsManager->createAutoCADModel(*m_pGraphicsKernel));
     if (m_pModel == nullptr)
         return;
+
     m_pOffDevice->onSize(m_width, m_height);
     if (!m_pOffDevice->add(m_pView.get()))
         return;
-    if (acgsGetViewParameters(cvport(), m_pView.get()) == false)
-        acutPrintf(_T("\nFailed to copy view parameters: "));
+
+    if (!acgsGetViewParameters(cvport(), m_pView.get()))
+        acutPrintf(_T("\nFailed to copy view parameters. Using default fallback projection."));
+
     m_pView->setVisualStyle(acdbGetViewportVisualStyle());
     setBackgroundColorFromArray(m_pOffDevice.get(), rgb);
     m_isReady = true;
@@ -130,13 +136,15 @@ wxImage BlockImageRenderer::render(AcDbBlockTableRecord* pBlock, double zoomFact
 
     if (!m_pView->add(pBlock, m_pModel.get()))
         return wxImage{};
+
     m_pView->setView(m_pView->position(), m_pView->target(), m_pView->upVector(), m_width, m_height);
+
     AcDbExtents ex = calcBlockExtents(*pBlock);
     m_pView->zoomExtents(ex.minPoint(), ex.maxPoint());
     m_pView->zoom(zoomFactor);
-    //do all view settings before here;
+
     m_pOffDevice->update();
-    m_pView->update();
+
     Atil::Image image(Atil::Size(m_width, m_height), &m_rgbModel, m_initialColor);
     m_pView->getSnapShot(&image, AcGsDCPoint(0, 0));
 
@@ -151,9 +159,9 @@ wxImage BlockImageRenderer::render(AcDbBlockTableRecord* pBlock, double zoomFact
             if (pixelType == Atil::DataModelAttributes::kRgba)
             {
                 wximage = wxImage(wxSize(imageSize.width, imageSize.height));
-                for (Atil::Int32 x = 0; x < imageSize.width; ++x)
+                for (Atil::Int32 y = 0; y < imageSize.height; ++y)
                 {
-                    for (Atil::Int32 y = 0; y < imageSize.height; ++y)
+                    for (Atil::Int32 x = 0; x < imageSize.width; ++x)
                     {
                         const Atil::RgbColor pix(imgContext->get32(x, y));
                         wximage.SetRGB(x, y, pix.rgba.red, pix.rgba.green, pix.rgba.blue);
@@ -162,7 +170,8 @@ wxImage BlockImageRenderer::render(AcDbBlockTableRecord* pBlock, double zoomFact
             }
         }
     }
-    m_pView->eraseAll();
+
+    m_pView->erase(pBlock);
     return wximage;
 }
 
