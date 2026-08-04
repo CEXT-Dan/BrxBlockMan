@@ -93,7 +93,6 @@ void WxBlockPanel::CreateControls()
     m_dirCtrl = XRCCTRL(*this, "ID_DIRCTRL", wxGenericDirCtrl);
     m_listCtrl = XRCCTRL(*this, "ID_LISTCTRL", wxListCtrl);
 
-
     // Bind
     if (m_dirCtrl)
     {
