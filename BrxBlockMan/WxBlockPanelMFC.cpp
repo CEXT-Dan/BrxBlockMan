@@ -107,6 +107,11 @@ void WxBlockPanel::CreateControls()
     m_staticPreviewCtrl->Bind(wxEVT_LEFT_DCLICK, &WxBlockPanel::OnPreviewLeftDClick, this);
     m_choiceCtrl->Bind(wxEVT_CHOICE, &WxBlockPanel::OnChoiceChanged, this);
 
+    //theme
+    const auto bkclr = wxColour(RGB(45, 45, 45));
+    m_rotationTextCtrl->SetBackgroundColour(bkclr);
+    m_scaleTextCtrl->SetBackgroundColour(bkclr);
+
     LoadChoiceSetting();
 }
 
