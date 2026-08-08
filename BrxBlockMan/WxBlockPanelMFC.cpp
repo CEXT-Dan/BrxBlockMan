@@ -92,6 +92,8 @@ void WxBlockPanel::CreateControls()
     m_scaleTextCtrl = XRCCTRL(*this, "ID_SCALE_TEXTCTRL", wxTextCtrl);
     m_dirCtrl = XRCCTRL(*this, "ID_DIRCTRL", wxGenericDirCtrl);
     m_listCtrl = XRCCTRL(*this, "ID_LISTCTRL", wxListCtrl);
+    m_rosCheckBoxCtrl = XRCCTRL(*this, "ID_CHECKBOX_ROS", wxCheckBox);
+    m_sosCheckBoxCtrl = XRCCTRL(*this, "ID_CHECKBOX_SOS", wxCheckBox);
 
     // Bind
     if (m_dirCtrl)
@@ -262,7 +264,12 @@ void WxBlockPanel::OnListctrlBeginDrag(wxListEvent& event)
         if (dwEffect)
         {
             wxString blockName = m_listCtrl->GetItemText(itemIndex, 0);
-            if (BlockWorker::insertBlockTableRecord(m_selectedDb.get(), blockName, getScaleValue(), getRotationValue()) == eOk)
+
+            int osFlags = OnScreenFlags::None;
+            SETBIT(osFlags, int(OnScreenFlags::Rotate), isRosChecked());
+            SETBIT(osFlags, int(OnScreenFlags::Scale), isSosChecked());
+
+            if (BlockWorker::insertBlockTableRecord(m_selectedDb.get(), blockName, getScaleValue(), getRotationValue(),(OnScreenFlags) osFlags) == eOk)
                 acutPrintf(_T("\n"));
             else
                 acutPrintf(_T("\nOops, Something went wrong"));
@@ -328,7 +335,10 @@ void WxBlockPanel::OnListCtrlLeftDClick(wxMouseEvent& event)
     if (itemIndex != wxNOT_FOUND)
     {
         wxString blockName = m_listCtrl->GetItemText(itemIndex, 0);
-        if(BlockWorker::insertBlockTableRecord(m_selectedDb.get(), blockName, getScaleValue(), getRotationValue()) == eOk)
+        int osFlags = OnScreenFlags::None;
+        SETBIT(osFlags, int(OnScreenFlags::Rotate), isRosChecked());
+        SETBIT(osFlags, int(OnScreenFlags::Scale), isSosChecked());
+        if(BlockWorker::insertBlockTableRecord(m_selectedDb.get(), blockName, getScaleValue(), getRotationValue(), (OnScreenFlags)osFlags) == eOk)
             acutPrintf(_T("\n"));
         else
             acutPrintf(_T("\nOops, Something went wrong"));
@@ -339,7 +349,10 @@ void WxBlockPanel::OnListCtrlLeftDClick(wxMouseEvent& event)
 void WxBlockPanel::OnPreviewLeftDClick(wxMouseEvent& event)
 {
     CAcModuleResourceOverride rsrc;
-    if (BlockWorker::insertDwg(m_selectedDb.get(), getScaleValue(), getRotationValue()) == eOk)
+    int osFlags = OnScreenFlags::None;
+    SETBIT(osFlags, int(OnScreenFlags::Rotate), isRosChecked());
+    SETBIT(osFlags, int(OnScreenFlags::Scale), isSosChecked());
+    if (BlockWorker::insertDwg(m_selectedDb.get(), getScaleValue(), getRotationValue(),(OnScreenFlags) osFlags) == eOk)
         acutPrintf(_T("\n"));
     else
         acutPrintf(_T("\nOops, Something went wrong"));
@@ -445,6 +458,16 @@ double WxBlockPanel::getRotationValue() const
         return 0.0;
     }
     return deg * (M_PI / 180.0);
+}
+
+bool WxBlockPanel::isRosChecked() const
+{
+    return m_rosCheckBoxCtrl && m_rosCheckBoxCtrl->IsChecked();
+}
+
+bool WxBlockPanel::isSosChecked() const
+{
+    return m_sosCheckBoxCtrl && m_sosCheckBoxCtrl->IsChecked();
 }
 
 BEGIN_MESSAGE_MAP(WxBlockPanelMFC, BcUiPanelMFC)

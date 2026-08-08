@@ -75,7 +75,7 @@ void AcGsViewDeleter::operator()(AcGsView* ptr)
 {
     if (ptr == nullptr)
         return;
-    ptr->eraseAll();  
+    ptr->eraseAll();
 }
 
 void AcGsModelDeleter::operator()(AcGsModel* ptr)
@@ -332,7 +332,7 @@ static HRESULT insertBlockViaActiveX(
     return hr;
 }
 
-Acad::ErrorStatus BlockWorker::insertBlockTableRecord(AcDbDatabase* srcDb, const wxString& blockName, double scale, double rotation)
+Acad::ErrorStatus BlockWorker::insertBlockTableRecord(AcDbDatabase* srcDb, const wxString& blockName, double scale, double rotation, OnScreenFlags flags)
 {
     AcAxDocLock lock;
     AcGePoint3d inspoint;
@@ -351,7 +351,7 @@ Acad::ErrorStatus BlockWorker::insertBlockTableRecord(AcDbDatabase* srcDb, const
         pDestBlockTable->close();
         if (bBlockExists)
         {
-            if (xformBlockJig(srcBlockId, inspoint, scale, rotation) == eOk)
+            if (xformBlockJig(srcBlockId, inspoint, scale, rotation, flags) == eOk)
             {
                 HRESULT hr = insertBlockViaActiveX(blockName.c_str(), inspoint, scale, rotation);
                 if (SUCCEEDED(hr))
@@ -385,7 +385,7 @@ Acad::ErrorStatus BlockWorker::insertBlockTableRecord(AcDbDatabase* srcDb, const
     if (auto es = pDestDb->insert(blkId, blockName.c_str(), pTmpDb, Adesk::kTrue); es != Acad::eOk)
         return es;
 
-    if (xformBlockJig(srcBlockId, inspoint, scale, rotation) == eOk)
+    if (xformBlockJig(srcBlockId, inspoint, scale, rotation, flags) == eOk)
     {
         HRESULT hr = insertBlockViaActiveX(blockName.c_str(), inspoint, scale, rotation);
         if (!SUCCEEDED(hr))
@@ -394,7 +394,7 @@ Acad::ErrorStatus BlockWorker::insertBlockTableRecord(AcDbDatabase* srcDb, const
     return Acad::eOk;
 }
 
-Acad::ErrorStatus BlockWorker::insertDwg(AcDbDatabase* srcDb, double scale, double rotation)
+Acad::ErrorStatus BlockWorker::insertDwg(AcDbDatabase* srcDb, double scale, double rotation, OnScreenFlags flags)
 {
     if (!srcDb)
         return Acad::eNoDatabase;
@@ -405,23 +405,37 @@ Acad::ErrorStatus BlockWorker::insertDwg(AcDbDatabase* srcDb, double scale, doub
 
     AcAxDocLock lock;
     AcGePoint3d inspoint;
-    if (xformBlockJig(srcDb->currentSpaceId(), inspoint, scale, rotation) == eOk)
+    if (xformBlockJig(srcDb->currentSpaceId(), inspoint, scale, rotation, flags) == eOk)
     {
         HRESULT hr = insertBlockViaActiveX(filename, inspoint, scale, rotation);
-        if (!SUCCEEDED(hr));
-        return Acad::eInvalidInput;
+        if (!SUCCEEDED(hr))
+            return Acad::eInvalidInput;
     }
     return Acad::eOk;
 }
 
-Acad::ErrorStatus BlockWorker::xformBlockJig(const AcDbObjectId& id, AcGePoint3d& point, double scale, double rotation)
+Acad::ErrorStatus BlockWorker::xformBlockJig(const AcDbObjectId& id, AcGePoint3d& point, double& scale, double& rotation, OnScreenFlags flags)
 {
     AcAxDocLock lock;
+
     BlockJig jig(id, scale, rotation);
     if (jig.doit() == Acad::eNormal)
-    {
         point = jig.getPoint();
-        return eOk;
+
+    if (GETBIT(flags, OnScreenFlags::Scale))
+    {
+        BlockJigScale sjig(id, point, rotation);
+        if (sjig.doit() != Acad::eNormal)
+            return eInvalidInput;
+        scale = sjig.getScale();
     }
-    return eInvalidInput;
+
+    if (GETBIT(flags, OnScreenFlags::Rotate))
+    {
+        BlockJigRotate rjig(id, point, rotation, scale);
+        if (rjig.doit() != Acad::eNormal)
+            return eInvalidInput;
+        rotation = rjig.getRotation();
+    }
+    return eOk;
 }

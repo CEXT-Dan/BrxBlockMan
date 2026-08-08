@@ -59,8 +59,8 @@ public:
     static wxImage getBlockImage(AcDbObjectId id, int width, int height, double zf, const std::array<int, 3>& rgb);
     static Acad::ErrorStatus getBlockImages(BlockInfoArray& info, int width, int height, double zf, const std::array<int, 3>& rgb);
     static Acad::ErrorStatus getBlockInfoFromdDb(AcDbDatabase* srcDb, BlockInfoArray& info);
-    static Acad::ErrorStatus insertBlockTableRecord(AcDbDatabase* srcDb, const wxString& blockName, double scale, double rotation);
-    static Acad::ErrorStatus insertDwg(AcDbDatabase* srcDb, double scale, double rotation);
-    static Acad::ErrorStatus xformBlockJig(const AcDbObjectId& id, AcGePoint3d& point, double scale, double rotation);
+    static Acad::ErrorStatus insertBlockTableRecord(AcDbDatabase* srcDb, const wxString& blockName, double scale, double rotation, OnScreenFlags flags);
+    static Acad::ErrorStatus insertDwg(AcDbDatabase* srcDb, double scale, double rotation, OnScreenFlags flags);
+    static Acad::ErrorStatus xformBlockJig(const AcDbObjectId& id, AcGePoint3d& point, double& scale, double& rotation, OnScreenFlags flags);
 };
 

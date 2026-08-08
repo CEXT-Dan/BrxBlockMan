@@ -226,5 +226,14 @@ using AcDbAcDbPolylineUPtr = AcDbObjectUPtr<AcDbPolyline>;
 
 //
 typedef AcDbObjectPointer<AcDbPolyline>AcDbPolylinePointer;
+
+
+enum OnScreenFlags 
+{
+    None = 0,
+    Rotate = 1 << 0,
+    Scale = 1 << 1,
+};
+
 #pragma pack (pop)
 

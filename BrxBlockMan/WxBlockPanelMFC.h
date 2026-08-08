@@ -67,6 +67,8 @@ public:
     void LoadChoiceSetting();
     double getScaleValue() const;
     double getRotationValue() const;
+    bool isRosChecked() const;
+    bool isSosChecked() const;
 
     // members
     wxStaticBitmap* m_staticPreviewCtrl;
@@ -76,6 +78,9 @@ public:
     wxTextCtrl* m_scaleTextCtrl;
     wxGenericDirCtrl* m_dirCtrl;
     wxListCtrl* m_listCtrl;
+    wxCheckBox* m_rosCheckBoxCtrl;
+    wxCheckBox* m_sosCheckBoxCtrl;
+
     std::unique_ptr<AcDbDatabase> m_selectedDb;
 };
 
