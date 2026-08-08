@@ -115,11 +115,8 @@ BlockImageRenderer::BlockImageRenderer(int width, int height, const std::array<i
     m_pOffDevice->onSize(m_width, m_height);
     if (!m_pOffDevice->add(m_pView.get()))
         return;
-
-    if (!acgsGetViewParameters(cvport(), m_pView.get()))
-        acutPrintf(_T("\nFailed to copy view parameters. Using default fallback projection."));
-
     m_pView->setVisualStyle(acdbGetViewportVisualStyle());
+    m_pView->setView(m_pView->position(), m_pView->target(), m_pView->upVector(), m_width, m_height);
     setBackgroundColorFromArray(m_pOffDevice.get(), rgb);
     m_isReady = true;
 }
@@ -137,7 +134,6 @@ wxImage BlockImageRenderer::render(AcDbBlockTableRecord* pBlock, double zoomFact
     if (!m_pView->add(pBlock, m_pModel.get()))
         return wxImage{};
 
-    m_pView->setView(m_pView->position(), m_pView->target(), m_pView->upVector(), m_width, m_height);
 
     AcDbExtents ex = calcBlockExtents(*pBlock);
     m_pView->zoomExtents(ex.minPoint(), ex.maxPoint());
