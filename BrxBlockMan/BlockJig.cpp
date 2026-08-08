@@ -60,9 +60,8 @@ BlockJigRotate::BlockJigRotate(const AcDbObjectId& btrid, const AcGePoint3d& pos
     m_pos = pos;
     m_curAng = rotation;
     m_prevAng = 0.0;
-    m_pRef.reset(new AcDbBlockReference(AcGePoint3d::kOrigin, btrid));
+    m_pRef.reset(new AcDbBlockReference(m_pos, btrid));
     m_pRef->setDatabaseDefaults();
-    m_pRef->setPosition(m_pos);
     AcGeMatrix3d matUcs;
     acedGetCurrentUCS(matUcs);
     AcGePoint3d ucsOrigin;
