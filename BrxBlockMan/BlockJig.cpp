@@ -11,14 +11,14 @@ BlockJigScale::BlockJigScale(const AcDbObjectId& btrid, const AcGePoint3d& pos, 
     m_pRef->setDatabaseDefaults();
     m_baseMat = m_pRef->blockTransform();
     m_refDist = m_curScale;
-    if (m_refDist < 1e-4) 
+    if (m_refDist < 1e-4)
         m_refDist = 1.0;
 }
 
 AcEdJig::DragStatus BlockJigScale::sampler(void)
 {
     setUserInputControls(AcEdJig::kNullResponseAccepted);
-    if (acquireDist(m_curScale, m_pos) != AcEdJig::kNormal)
+    if (auto result = acquireDist(m_curScale, m_pos); result == AcEdJig::kCancel)
         return AcEdJig::kCancel;
     return AcEdJig::kNormal;
 }
@@ -77,8 +77,8 @@ BlockJigRotate::BlockJigRotate(const AcDbObjectId& btrid, const AcGePoint3d& pos
 
 AcEdJig::DragStatus BlockJigRotate::sampler(void)
 {
-   setUserInputControls(AcEdJig::kNullResponseAccepted);
-    if (acquireAngle(m_curAng, m_pos) != AcEdJig::kNormal)
+    setUserInputControls(AcEdJig::kNullResponseAccepted);
+    if (auto result = acquireAngle(m_curAng, m_pos); result == AcEdJig::kCancel)
         return AcEdJig::kCancel;
     return AcEdJig::kNormal;
 }
@@ -128,7 +128,7 @@ BlockJig::BlockJig(const AcDbObjectId& btrid, double scale, double rotation)
 AcEdJig::DragStatus BlockJig::sampler(void)
 {
     setUserInputControls(AcEdJig::kAccept3dCoordinates);
-    if (acquirePoint(m_curpnt) != AcEdJig::kNormal)
+    if (auto result = acquirePoint(m_curpnt); result == AcEdJig::kCancel)
         return AcEdJig::kCancel;
     return AcEdJig::kNormal;
 }

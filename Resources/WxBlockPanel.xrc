@@ -36,7 +36,7 @@
                         <object class="wxBoxSizer">
                             <orient>wxHORIZONTAL</orient>
                             <object class="sizeritem">
-                                <flag>wxGROW|wxALL</flag>
+                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
                                 <border>5</border>
                                 <option>1</option>
                                 <object class="wxChoice" name="ID_CHOICE">
