@@ -103,7 +103,6 @@ Acad::PromptStatus BlockJigScale::doit(void)
 
 const double BlockJigScale::getScale() const
 {
-    acutPrintf(L"\nScale = %f", m_curScale);
     return m_curScale;
 }
 
