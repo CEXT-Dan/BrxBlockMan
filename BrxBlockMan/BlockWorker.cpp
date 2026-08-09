@@ -189,8 +189,10 @@ wxImage BlockWorker::getBlockImage(AcDbObjectId id, int width, int height, doubl
 
 Acad::ErrorStatus BlockWorker::getBlockImages(BlockInfoArray& info, int width, int height, double zf, const std::array<int, 3>& rgb)
 {
-    //PTimer timer;
-    //timer.StartTimer();
+#ifdef USE_TIMER
+    PTimer timer;
+    timer.StartTimer();
+#endif
     AcAxDocLock lock;
     BlockImageRenderer renderer(width, height, rgb);
     if (!renderer.isValid())
@@ -203,7 +205,9 @@ Acad::ErrorStatus BlockWorker::getBlockImages(BlockInfoArray& info, int width, i
             continue;
         item.preview = renderer.render(pBlock, zf);
     }
-    //acutPrintf(_T("\n%f"), timer.EndTimer());
+#ifdef USE_TIMER
+    acutPrintf(_T("\n%f"), timer.EndTimer());
+#endif
     return eOk;
 }
 

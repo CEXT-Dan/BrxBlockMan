@@ -106,7 +106,6 @@
 #define _ARX_CUSTOM_DRAG_N_DROP_	//- Support for the ObjectARX Drag'n Drop API
 //#define _INC_LEAGACY_HEADERS_		//- Include legacy headers in this project
 
-
 //** I added this because doing a static analysis picks up errors we have no control over 
 #pragma warning (push, 0)
 #include "arxHeaders.h"
@@ -235,6 +234,9 @@ enum OnScreenFlags
     Scale = 1 << 1,
 };
 
+// #define USE_TIMER
+
+#ifdef USE_TIMER
 class PTimer
 {
     double m_PCFreq = 1;
@@ -259,6 +261,7 @@ inline double PTimer::EndTimer()
     QueryPerformanceCounter(&li);
     return double(li.QuadPart - m_CounterStart) / m_PCFreq;
 }
+#endif
 
 
 #pragma pack (pop)
