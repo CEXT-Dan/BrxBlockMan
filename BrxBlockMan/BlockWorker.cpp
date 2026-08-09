@@ -64,6 +64,13 @@ static AcDbExtents calcBlockExtents(AcDbBlockTableRecord& rec)
     return ex;
 }
 
+void AcGsGraphicsKernelDeleter::operator()(AcGsGraphicsKernel* ptr)
+{
+    if (ptr == nullptr)
+        return;
+    acgsGetGsManager()->releaseGraphicsKernel(ptr);
+}
+
 void AcGsDeviceDeleter::operator()(AcGsDevice* ptr)
 {
     if (ptr == nullptr)
@@ -75,7 +82,7 @@ void AcGsViewDeleter::operator()(AcGsView* ptr)
 {
     if (ptr == nullptr)
         return;
-    ptr->eraseAll();
+    acgsGetGsManager()->destroyAutoCADView(ptr);
 }
 
 void AcGsModelDeleter::operator()(AcGsModel* ptr)
@@ -86,8 +93,7 @@ void AcGsModelDeleter::operator()(AcGsModel* ptr)
 }
 
 BlockImageRenderer::BlockImageRenderer(int width, int height, const std::array<int, 3>& rgb)
-    : m_pGraphicsKernel(nullptr)
-    , m_width(width)
+    : m_width(width)
     , m_height(height)
     , m_isReady(false)
     , m_rgbModel(32)
@@ -96,7 +102,7 @@ BlockImageRenderer::BlockImageRenderer(int width, int height, const std::array<i
     AcGsManager* gsManager = acgsGetGsManager();
     AcGsKernelDescriptor descriptor;
     descriptor.addRequirement(AcGsKernelDescriptor::k3DDrawing);
-    m_pGraphicsKernel = AcGsManager::acquireGraphicsKernel(descriptor);
+    m_pGraphicsKernel.reset(AcGsManager::acquireGraphicsKernel(descriptor));
     if (m_pGraphicsKernel == nullptr)
         return;
 
@@ -183,6 +189,8 @@ wxImage BlockWorker::getBlockImage(AcDbObjectId id, int width, int height, doubl
 
 Acad::ErrorStatus BlockWorker::getBlockImages(BlockInfoArray& info, int width, int height, double zf, const std::array<int, 3>& rgb)
 {
+    //PTimer timer;
+    //timer.StartTimer();
     AcAxDocLock lock;
     BlockImageRenderer renderer(width, height, rgb);
     if (!renderer.isValid())
@@ -195,6 +203,7 @@ Acad::ErrorStatus BlockWorker::getBlockImages(BlockInfoArray& info, int width, i
             continue;
         item.preview = renderer.render(pBlock, zf);
     }
+    //acutPrintf(_T("\n%f"), timer.EndTimer());
     return eOk;
 }
 

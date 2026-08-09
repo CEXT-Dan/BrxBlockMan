@@ -15,6 +15,12 @@ struct BlockInfo
 
 typedef std::vector<BlockInfo> BlockInfoArray;
 
+struct AcGsGraphicsKernelDeleter
+{
+    void operator()(AcGsGraphicsKernel* ptr);
+};
+using AcGsGraphicsKernelPtr = std::unique_ptr <AcGsGraphicsKernel, AcGsGraphicsKernelDeleter>;
+
 struct AcGsDeviceDeleter
 {
     void operator()(AcGsDevice* ptr);
@@ -42,7 +48,7 @@ public:
     wxImage render(AcDbBlockTableRecord* pBlock, double zoomFactor);
 
 private:
-    AcGsGraphicsKernel* m_pGraphicsKernel;
+    AcGsGraphicsKernelPtr m_pGraphicsKernel;
     AcGsDevicePtr m_pOffDevice;
     AcGsViewPtr m_pView;
     AcGsModelPtr m_pModel;

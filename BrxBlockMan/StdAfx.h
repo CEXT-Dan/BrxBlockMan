@@ -235,5 +235,31 @@ enum OnScreenFlags
     Scale = 1 << 1,
 };
 
+class PTimer
+{
+    double m_PCFreq = 1;
+    __int64 m_CounterStart = 1;
+public:
+    void StartTimer();
+    double EndTimer();
+};
+
+inline void PTimer::StartTimer()
+{
+    LARGE_INTEGER li;
+    QueryPerformanceFrequency(&li);
+    m_PCFreq = double(li.QuadPart) / 1000.0;
+    QueryPerformanceCounter(&li);
+    m_CounterStart = li.QuadPart;
+}
+
+inline double PTimer::EndTimer()
+{
+    LARGE_INTEGER li;
+    QueryPerformanceCounter(&li);
+    return double(li.QuadPart - m_CounterStart) / m_PCFreq;
+}
+
+
 #pragma pack (pop)
 
