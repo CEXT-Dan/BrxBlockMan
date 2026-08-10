@@ -347,26 +347,27 @@ Acad::ErrorStatus BlockWorker::insertBlockTableRecord(AcDbDatabase* srcDb, const
     AcGePoint3d inspoint;
     AcDbObjectId srcBlockId;
     AcDbDatabase* pDestDb = acdbCurDwg();
-    AcDbBlockTable* pDestBlockTable = nullptr;
-
     if (!pDestDb)
         return Acad::eNoDatabase;
+    
 
     // check if the block is already inserted 
-    if (pDestDb->getBlockTable(pDestBlockTable, AcDb::kForRead) == Acad::eOk)
+    bool bBlockExists = false;
     {
-        bool bBlockExists = pDestBlockTable->has(blockName.c_str());
-        pDestBlockTable->getAt(blockName.c_str(), srcBlockId);
-        pDestBlockTable->close();
+        AcDbBlockTablePointer pDestBlockTable(pDestDb->blockTableId());
+        bBlockExists = pDestBlockTable->has(blockName.c_str());
         if (bBlockExists)
+            pDestBlockTable->getAt(blockName.c_str(), srcBlockId);
+    }
+
+    if (bBlockExists)
+    {
+        if (xformBlockJig(srcBlockId, inspoint, scale, rotation, flags) == eOk)
         {
-            if (xformBlockJig(srcBlockId, inspoint, scale, rotation, flags) == eOk)
-            {
-                HRESULT hr = insertBlockViaActiveX(blockName.c_str(), inspoint, scale, rotation);
-                if (SUCCEEDED(hr))
-                    return Acad::eOk;
-                return Acad::eInvalidInput;
-            }
+            HRESULT hr = insertBlockViaActiveX(blockName.c_str(), inspoint, scale, rotation);
+            if (SUCCEEDED(hr))
+                return Acad::eOk;
+            return Acad::eInvalidInput;
         }
     }
 
