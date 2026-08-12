@@ -49,13 +49,6 @@ WxBlockPanel::~WxBlockPanel()
 
 void WxBlockPanel::Init()
 {
-    m_staticPreviewCtrl = NULL;
-    m_choiceCtrl = NULL;
-    m_addButtonCtrl = NULL;
-    m_rotationTextCtrl = NULL;
-    m_scaleTextCtrl = NULL;
-    m_dirCtrl = NULL;
-    m_listCtrl = NULL;
 }
 
 void WxBlockPanel::Uninit()
@@ -82,6 +75,8 @@ bool WxBlockPanel::initDatabase(const wxString& selectedPath)
 void WxBlockPanel::CreateControls()
 {
     CAcModuleResourceOverride rsrc;
+
+    // read assign from .XRC
     if (!wxXmlResource::Get()->LoadPanel(this, GetParent(), wxT("ID_BLOCKMAN")))
         wxLogError(wxT("Missing wxXmlResource::Get()->Load() in OnInit()?"));
 
@@ -194,8 +189,7 @@ void WxBlockPanel::OnDirCtrlSelectionChanged(wxTreeEvent& event)
         return;
     }
 
-    bool inCache = sessionCache.contains(selectedPath);
-    if (!inCache)
+    if (!sessionCache.contains(selectedPath))
     {
         CachedFileData newData;
         AcDbObjectId msid = acdbSymUtil()->blockModelSpaceId(m_selectedDb.get());

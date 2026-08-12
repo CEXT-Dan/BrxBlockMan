@@ -70,17 +70,16 @@ public:
     bool isRosChecked() const;
     bool isSosChecked() const;
 
-    // members
-    wxStaticBitmap* m_staticPreviewCtrl;
-    wxChoice* m_choiceCtrl;
-    wxButton* m_addButtonCtrl;
-    wxTextCtrl* m_rotationTextCtrl;
-    wxTextCtrl* m_scaleTextCtrl;
-    wxGenericDirCtrl* m_dirCtrl;
-    wxListCtrl* m_listCtrl;
-    wxCheckBox* m_rosCheckBoxCtrl;
-    wxCheckBox* m_sosCheckBoxCtrl;
-
+private:
+    wxStaticBitmap* m_staticPreviewCtrl = nullptr;
+    wxChoice* m_choiceCtrl = nullptr;
+    wxButton* m_addButtonCtrl = nullptr;
+    wxTextCtrl* m_rotationTextCtrl = nullptr;
+    wxTextCtrl* m_scaleTextCtrl = nullptr;
+    wxGenericDirCtrl* m_dirCtrl = nullptr;
+    wxListCtrl* m_listCtrl = nullptr;
+    wxCheckBox* m_rosCheckBoxCtrl = nullptr;
+    wxCheckBox* m_sosCheckBoxCtrl = nullptr;
     std::unique_ptr<AcDbDatabase> m_selectedDb;
 };
 
