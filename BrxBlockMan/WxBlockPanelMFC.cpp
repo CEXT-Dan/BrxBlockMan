@@ -145,7 +145,7 @@ void WxBlockPanel::OnAddButtonClick(wxCommandEvent& event)
     if (dirDlg.ShowModal() == wxID_OK)
     {
         wxString result = dirDlg.GetPath();
-       
+
         if (int existingIndex = m_choiceCtrl->FindString(result); existingIndex == wxNOT_FOUND)
         {
             int newIndex = m_choiceCtrl->Append(result);
@@ -172,7 +172,7 @@ void WxBlockPanel::OnDirCtrlSelectionChanged(wxTreeEvent& event)
     CAcModuleResourceOverride rsrc;
     wxGenericDirCtrl* dirCtrl = wxDynamicCast(event.GetEventObject(), wxGenericDirCtrl);
 
-    if (!dirCtrl) 
+    if (!dirCtrl)
     {
         m_selectedDb.reset();
         event.Skip();
@@ -180,14 +180,14 @@ void WxBlockPanel::OnDirCtrlSelectionChanged(wxTreeEvent& event)
     }
 
     wxString selectedPath = dirCtrl->GetPath();
-    if (selectedPath.IsEmpty() || !selectedPath.EndsWith(".dwg")) 
+    if (selectedPath.IsEmpty() || !selectedPath.EndsWith(".dwg"))
     {
         m_selectedDb.reset();
         event.Skip();
         return;
     }
 
-    if (!initDatabase(selectedPath)) 
+    if (!initDatabase(selectedPath))
     {
         m_selectedDb.reset();
         event.Skip();
@@ -199,16 +199,16 @@ void WxBlockPanel::OnDirCtrlSelectionChanged(wxTreeEvent& event)
     {
         CachedFileData newData;
         AcDbObjectId msid = acdbSymUtil()->blockModelSpaceId(m_selectedDb.get());
-       
+
         if (wxImage modelImage = BlockWorker::getBlockImage(msid, 400, 225, 1.0, { 25, 25, 25 }); modelImage.IsOk())
         {
             newData.modelPreview = wxBitmap(modelImage);
         }
-        if (BlockWorker::getBlockInfoFromdDb(m_selectedDb.get(), newData.blockInfo) == eOk) 
+        if (BlockWorker::getBlockInfoFromdDb(m_selectedDb.get(), newData.blockInfo) == eOk)
         {
             sessionCache[selectedPath] = std::move(newData);
         }
-        else 
+        else
         {
             m_selectedDb.reset();
             event.Skip();
@@ -274,7 +274,7 @@ void WxBlockPanel::OnListctrlBeginDrag(wxListEvent& event)
             SETBIT(osFlags, int(OnScreenFlags::Rotate), isRosChecked());
             SETBIT(osFlags, int(OnScreenFlags::Scale), isSosChecked());
 
-            if (BlockWorker::insertBlockTableRecord(m_selectedDb.get(), blockName, getScaleValue(), getRotationValue(),(OnScreenFlags) osFlags) == eOk)
+            if (BlockWorker::insertBlockTableRecord(m_selectedDb.get(), blockName, getScaleValue(), getRotationValue(), (OnScreenFlags)osFlags) == eOk)
                 acutPrintf(_T("\n"));
             else
                 acutPrintf(_T("\nOops, Something went wrong"));
@@ -343,7 +343,7 @@ void WxBlockPanel::OnListCtrlLeftDClick(wxMouseEvent& event)
         int osFlags = OnScreenFlags::None;
         SETBIT(osFlags, int(OnScreenFlags::Rotate), isRosChecked());
         SETBIT(osFlags, int(OnScreenFlags::Scale), isSosChecked());
-        if(BlockWorker::insertBlockTableRecord(m_selectedDb.get(), blockName, getScaleValue(), getRotationValue(), (OnScreenFlags)osFlags) == eOk)
+        if (BlockWorker::insertBlockTableRecord(m_selectedDb.get(), blockName, getScaleValue(), getRotationValue(), (OnScreenFlags)osFlags) == eOk)
             acutPrintf(_T("\n"));
         else
             acutPrintf(_T("\nOops, Something went wrong"));
@@ -357,7 +357,7 @@ void WxBlockPanel::OnPreviewLeftDClick(wxMouseEvent& event)
     int osFlags = OnScreenFlags::None;
     SETBIT(osFlags, int(OnScreenFlags::Rotate), isRosChecked());
     SETBIT(osFlags, int(OnScreenFlags::Scale), isSosChecked());
-    if (BlockWorker::insertDwg(m_selectedDb.get(), getScaleValue(), getRotationValue(),(OnScreenFlags) osFlags) == eOk)
+    if (BlockWorker::insertDwg(m_selectedDb.get(), getScaleValue(), getRotationValue(), (OnScreenFlags)osFlags) == eOk)
         acutPrintf(_T("\n"));
     else
         acutPrintf(_T("\nOops, Something went wrong"));
@@ -370,19 +370,44 @@ void WxBlockPanel::OnDirCtrlRightClick(wxTreeEvent& event)
     wxString path = m_dirCtrl->GetPath();
     if (path.IsEmpty()) return;
     wxString lowerPath = path.Lower();
-    if (!lowerPath.EndsWith(".dwg"))
-        return;
-    m_selectedDb.reset();
-    if (acDocManagerPtr()->isApplicationContext())
-        acDocManagerPtr()->appContextOpenDocument(path.t_str());
+    if (lowerPath.EndsWith(".dwg"))
+    {
+        m_selectedDb.reset();
+        if (acDocManagerPtr()->isApplicationContext())
+            acDocManagerPtr()->appContextOpenDocument(path.t_str());
+        else
+            acutPrintf(_T("\n[Error] Failed to acquire main Application Context.\n"));
+    }
     else
-        acutPrintf(_T("\n[Error] Failed to acquire main Application Context.\n"));
+    {
+        int response = wxMessageBox(
+            L"Add this folder to favorites?",
+            L"Add Favorites",
+            wxYES_NO | wxICON_QUESTION,
+            this
+        );
+
+        if (response == wxYES)
+        {
+            if (int existingIndex = m_choiceCtrl->FindString(path); existingIndex == wxNOT_FOUND)
+            {
+                int newIndex = m_choiceCtrl->Append(path);
+                m_choiceCtrl->SetSelection(newIndex);
+            }
+            else
+            {
+                m_choiceCtrl->SetSelection(existingIndex);
+            }
+            NavigateToFolder(path);
+            SaveChoiceSetting();
+        }
+    }
 }
 
 void WxBlockPanel::SaveChoiceSetting()
 {
     CAcModuleResourceOverride rsrc;
-    if (!m_choiceCtrl) 
+    if (!m_choiceCtrl)
         return;
 
     wxRegConfig config(wxT("Blockman"), wxT("CADExt"));
@@ -410,7 +435,7 @@ void WxBlockPanel::SaveChoiceSetting()
 void WxBlockPanel::LoadChoiceSetting()
 {
     CAcModuleResourceOverride rsrc;
-    if (!m_choiceCtrl) 
+    if (!m_choiceCtrl)
         return;
 
     m_choiceCtrl->Clear();
