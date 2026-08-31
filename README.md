@@ -10,6 +10,7 @@ Block manager for BricsCAD V25, V26, V27
 - use the dropdown to navigate to a favorite folder
 - right click on a dwg to open it
 - right click on a folder to add it to favorites
+- right click on the dropdown ctrl to clear favorites
 
 
 Preview  ![Gui](./Resources/blkman.png)
