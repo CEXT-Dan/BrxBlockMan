@@ -221,7 +221,8 @@ void WxBlockPanel::OnDirCtrlSelectionChanged(wxTreeEvent& event)
         m_listCtrl->AssignImageList(nullptr, wxIMAGE_LIST_NORMAL);
     }
 
-    if (!data.blockInfo.empty()) {
+    if (!data.blockInfo.empty()) 
+    {
         auto* imageList = new wxImageList(64, 64, false, static_cast<int>(data.blockInfo.size()));
         long itemIndex = 0;
 
