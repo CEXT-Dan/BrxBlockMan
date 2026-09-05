@@ -133,57 +133,76 @@ bool BlockImageRenderer::isValid() const
     return m_isReady;
 }
 
-wxImage BlockImageRenderer::render(AcDbBlockTableRecord* pBlock, double zoomFactor)
-{
-    if (pBlock == nullptr || !isValid())
-        return wxImage{};
+wxImage BlockImageRenderer::render(AcDbBlockTableRecord* pBlock, double zoomFactor) 
+{     
+    if (pBlock == nullptr || !isValid())         
+        return wxImage{};      
 
-    if (!m_pView->add(pBlock, m_pModel.get()))
-        return wxImage{};
+    if (!m_pView->add(pBlock, m_pModel.get()))         
+        return wxImage{};      
 
-    AcDbExtents ex = calcBlockExtents(*pBlock);
-    m_pView->zoomExtents(ex.minPoint(), ex.maxPoint());
-    m_pView->zoom(zoomFactor);
+    AcDbExtents ex = calcBlockExtents(*pBlock);     
+    m_pView->zoomExtents(ex.minPoint(), ex.maxPoint());     
+    m_pView->zoom(zoomFactor);      
+    m_pOffDevice->update();      
 
-    m_pOffDevice->update();
+    Atil::Image image(Atil::Size(m_width, m_height), &m_rgbModel, m_initialColor);     
+    m_pView->getSnapShot(&image, AcGsDCPoint(0, 0));      
 
-    Atil::Image image(Atil::Size(m_width, m_height), &m_rgbModel, m_initialColor);
-    m_pView->getSnapShot(&image, AcGsDCPoint(0, 0));
+    wxImage wximage;     
 
-    wxImage wximage;
-    if (image.isValid())
-    {
-        Atil::Size imageSize = image.size();
-        std::unique_ptr<Atil::ImageContext> imgContext(image.createContext(Atil::ImageContext::kRead, imageSize, Atil::Offset(0, 0)));
-        if (imgContext)
+    if (image.isValid())     
+    {         
+        Atil::Size imageSize = image.size();         
+        std::unique_ptr<Atil::ImageContext> imgContext(
+            image.createContext(Atil::ImageContext::kRead, imageSize, Atil::Offset(0, 0))
+        );         
+
+        if (imgContext && imgContext->getPixelType() == Atil::DataModelAttributes::kRgba)
         {
-            Atil::DataModelAttributes::PixelType pixelType = imgContext->getPixelType();
-            if (pixelType == Atil::DataModelAttributes::kRgba)
+            wximage.Create(wxSize(imageSize.width, imageSize.height), false);
+            unsigned char* rgbData = wximage.GetData();
+
+            wximage.InitAlpha();
+            unsigned char* alphaData = wximage.GetAlpha();
+            std::vector<Atil::RgbColor> rowBuffer(imageSize.width);
+
+            for (Atil::Int32 y = 0; y < imageSize.height; ++y)
             {
-                wximage = wxImage(wxSize(imageSize.width, imageSize.height));
-                for (Atil::Int32 y = 0; y < imageSize.height; ++y)
+                imgContext->getRow(y, 0, imageSize.width, rowBuffer.data());
+                for (Atil::Int32 x = 0; x < imageSize.width; ++x)
                 {
-                    for (Atil::Int32 x = 0; x < imageSize.width; ++x)
+                    const Atil::RgbColor& pix = rowBuffer[x];
+                    *rgbData++ = pix.rgba.red;
+                    *rgbData++ = pix.rgba.green;
+                    *rgbData++ = pix.rgba.blue;
+                    if (alphaData)
                     {
-                        const Atil::RgbColor pix(imgContext->get32(x, y));
-                        wximage.SetRGB(x, y, pix.rgba.red, pix.rgba.green, pix.rgba.blue);
+                        *alphaData++ = pix.rgba.alpha;
                     }
                 }
             }
         }
-    }
+    }      
 
-    m_pView->erase(pBlock);
-    return wximage;
+    m_pView->erase(pBlock);     
+    return wximage; 
 }
 
 wxImage BlockWorker::getBlockImage(AcDbObjectId id, int width, int height, double zf, const std::array<int, 3>& rgb)
 {
+#ifdef USE_TIMER
+    PTimer timer;
+    timer.StartTimer();
+#endif
     AcAxDocLock lock;
     AcDbBlockTableRecordPointer pBlock(id);
     if (pBlock.openStatus() != eOk)
         return wxImage{};
     BlockImageRenderer renderer(width, height, rgb);
+#ifdef USE_TIMER
+    acutPrintf(_T("\n%f"), timer.EndTimer());
+#endif
     return renderer.render(pBlock, zf);
 }
 
