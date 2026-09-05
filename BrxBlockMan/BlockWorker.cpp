@@ -133,30 +133,30 @@ bool BlockImageRenderer::isValid() const
     return m_isReady;
 }
 
-wxImage BlockImageRenderer::render(AcDbBlockTableRecord* pBlock, double zoomFactor) 
-{     
-    if (pBlock == nullptr || !isValid())         
-        return wxImage{};      
+wxImage BlockImageRenderer::render(AcDbBlockTableRecord* pBlock, double zoomFactor)
+{
+    if (pBlock == nullptr || !isValid())
+        return wxImage{};
 
-    if (!m_pView->add(pBlock, m_pModel.get()))         
-        return wxImage{};      
+    if (!m_pView->add(pBlock, m_pModel.get()))
+        return wxImage{};
 
-    AcDbExtents ex = calcBlockExtents(*pBlock);     
-    m_pView->zoomExtents(ex.minPoint(), ex.maxPoint());     
-    m_pView->zoom(zoomFactor);      
-    m_pOffDevice->update();      
+    AcDbExtents ex = calcBlockExtents(*pBlock);
+    m_pView->zoomExtents(ex.minPoint(), ex.maxPoint());
+    m_pView->zoom(zoomFactor);
+    m_pOffDevice->update();
 
-    Atil::Image image(Atil::Size(m_width, m_height), &m_rgbModel, m_initialColor);     
-    m_pView->getSnapShot(&image, AcGsDCPoint(0, 0));      
+    Atil::Image image(Atil::Size(m_width, m_height), &m_rgbModel, m_initialColor);
+    m_pView->getSnapShot(&image, AcGsDCPoint(0, 0));
 
-    wxImage wximage;     
+    wxImage wximage;
 
-    if (image.isValid())     
-    {         
-        Atil::Size imageSize = image.size();         
+    if (image.isValid())
+    {
+        Atil::Size imageSize = image.size();
         std::unique_ptr<Atil::ImageContext> imgContext(
             image.createContext(Atil::ImageContext::kRead, imageSize, Atil::Offset(0, 0))
-        );         
+        );
 
         if (imgContext && imgContext->getPixelType() == Atil::DataModelAttributes::kRgba)
         {
@@ -183,10 +183,10 @@ wxImage BlockImageRenderer::render(AcDbBlockTableRecord* pBlock, double zoomFact
                 }
             }
         }
-    }      
+    }
 
-    m_pView->erase(pBlock);     
-    return wximage; 
+    m_pView->erase(pBlock);
+    return wximage;
 }
 
 wxImage BlockWorker::getBlockImage(AcDbObjectId id, int width, int height, double zf, const std::array<int, 3>& rgb)
@@ -368,7 +368,7 @@ Acad::ErrorStatus BlockWorker::insertBlockTableRecord(AcDbDatabase* srcDb, const
     AcDbDatabase* pDestDb = acdbCurDwg();
     if (!pDestDb)
         return Acad::eNoDatabase;
-    
+
 
     // check if the block is already inserted 
     bool bBlockExists = false;

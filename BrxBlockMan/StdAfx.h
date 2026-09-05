@@ -234,7 +234,7 @@ enum OnScreenFlags
     Scale = 1 << 1,
 };
 
-// #define USE_TIMER
+//#define USE_TIMER
 
 #ifdef USE_TIMER
 class PTimer
