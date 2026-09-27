@@ -227,6 +227,10 @@ Acad::ErrorStatus BlockWorker::getBlockImages(BlockInfoArray& info, int width, i
 #ifdef USE_TIMER
     acutPrintf(_T("\n%f"), timer.EndTimer());
 #endif
+    std::sort(info.begin(), info.end(), [](const BlockInfo& a, const BlockInfo& b)
+        {
+            return a.name < b.name;
+        });
     return eOk;
 }
 
